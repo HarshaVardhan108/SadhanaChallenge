@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dummy Public Challenge · Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --krishna: #1a4fa3;
+        --gold: #ffd54f;
+        --cream: #fff8e7;
+        --tulasi: #6fbf73;
+        --peacock: #006d77;
+        --indigo: #2a2e6e;
+        --muted: #5a6478;
+        --border: rgba(255, 213, 79, 0.55);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: Poppins, system-ui, sans-serif;
+        color: var(--indigo);
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, #ffd54f33, transparent),
+          var(--cream);
+        padding: 1.25rem;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: "Libre Baskerville", Georgia, serif;
+      }
+      .wrap {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.25rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(0, 109, 119, 0.1);
+        color: var(--peacock);
+      }
+      .card {
+        background: #fff;
+        border: 1.5px solid var(--border);
+        border-radius: 1rem;
+        padding: 1.1rem 1.15rem 1.25rem;
+        box-shadow: 0 8px 28px rgba(26, 79, 163, 0.08);
+      }
+      .card + .card {
+        margin-top: 1rem;
+      }
+      .title {
+        margin: 0;
+        font-size: 1.25rem;
+        color: var(--krishna);
+      }
+      .meta {
+        margin: 0.35rem 0 0;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .goal {
+        margin: 0.5rem 0 0;
+        font-size: 0.875rem;
+      }
+      .activities {
+        margin: 0.35rem 0 0;
+        font-size: 0.75rem;
+        color: var(--peacock);
+      }
+      .header-flex {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.85rem;
+      }
+      .stats {
+        text-align: right;
+        font-size: 0.75rem;
+      }
+      .stats strong {
+        color: var(--krishna);
+      }
+      .hint {
+        margin: 0 0 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid rgba(255, 213, 79, 0.35);
+        border-radius: 0.75rem;
+        background: rgba(255, 248, 231, 0.55);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: max-content;
+        font-size: 0.8rem;
+      }
+      th {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 0.55rem 0.35rem;
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--peacock);
+        border-bottom: 1px solid rgba(255, 213, 79, 0.35);
+      }
+      th.name {
+        text-align: left;
+        padding-left: 0.75rem;
+        color: var(--krishna);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: #fff;
+      }
+      th.done {
+        color: var(--krishna);
+        padding: 0.55rem 0.75rem;
+      }
+      td {
+        padding: 0.4rem 0.3rem;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 213, 79, 0.15);
+      }
+      tr:nth-child(even) {
+        background: rgba(255, 248, 231, 0.45);
+      }
+      tr:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.45);
+      }
+      td.name {
+        text-align: left;
+        padding-left: 0.75rem;
+        font-weight: 500;
+        color: var(--krishna);
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: inherit;
+        max-width: 9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      td.done {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--peacock);
+        padding: 0.4rem 0.75rem;
+      }
+      .check {
+        width: 1.75rem;
+        height: 1.75rem;
+        margin: 0 auto;
+        border-radius: 0.4rem;
+        border: 2px solid rgba(255, 213, 79, 0.55);
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .check.on {
+        border-color: var(--tulasi);
+        background: var(--tulasi);
+        color: #fff;
+        box-shadow: 0 1px 3px rgba(111, 191, 115, 0.4);
+      }
+      .check svg {
+        width: 0.9rem;
+        height: 0.9rem;
+      }
+      .dash-card {
+        display: grid;
+        gap: 0.75rem;
+      }
+      @media (min-width: 560px) {
+        .dash-card {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .mini {
+        padding: 1rem;
+      }
+      .mini h3 {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--krishna);
+      }
+      .bar {
+        height: 0.5rem;
+        border-radius: 999px;
+        background: #fff8e7;
+        border: 1px solid rgba(255, 213, 79, 0.3);
+        overflow: hidden;
+        margin-top: 0.35rem;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        background: var(--krishna);
+        border-radius: 999px;
+      }
+      .section-label {
+        margin: 1.5rem 0 0.65rem;
+        font-size: 1.1rem;
+        color: var(--krishna);
+      }
+      .page-title {
+        margin: 0 0 0.25rem;
+        font-size: 1.5rem;
+        color: var(--krishna);
+      }
+      .page-sub {
+        margin: 0 0 1.25rem;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      .active {
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(111, 191, 115, 0.25);
+        color: #166534;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="pill" style="margin-bottom: 0.75rem">Demo preview · dummy data</p>
+      <h1 class="page-title">How it looks</h1>
+      <p class="page-sub">
+        Dummy public challenge <strong>Kartik Month Sankalpa</strong> — 21 days,
+        5 devotees who accepted, day-wise checkboxes.
+      </p>
+
+      <h2 class="section-label">Dashboard · under greeting</h2>
+      <div class="dash-card">
+        <div class="card mini">
+          <div style="display: flex; justify-content: space-between; gap: 0.5rem">
+            <div>
+              <h3>🎨 Kartik Month Sankalpa</h3>
+              <p class="meta">21 days · Public · Jul 10, 2026</p>
+            </div>
+            <span class="active">Active</span>
+          </div>
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              font-size: 0.75rem;
+              margin-top: 0.75rem;
+              color: var(--muted);
+            "
+          >
+            <span>👥 5 accepted</span>
+            <strong style="color: var(--krishna)">52%</strong>
+          </div>
+          <div class="bar"><i style="width: 52%"></i></div>
+          <p class="activities">Chanting (japa), Reading, Gratitude journal</p>
+        </div>
+      </div>
+
+      <h2 class="section-label">Challenges page · public grid</h2>
+      <div class="card">
+        <div class="header-flex">
+          <div>
+            <div class="badge-row">
+              <h2 class="title">🎨 Kartik Month Sankalpa</h2>
+              <span class="pill">🌐 Public</span>
+            </div>
+            <p class="meta">21 days · by Harsha · Jul 10, 2026</p>
+            <p class="goal">
+              Daily japa, reading &amp; gratitude — walk together back home,
+              back to Godhead.
+            </p>
+            <p class="activities">
+              Chanting (japa), Reading, Gratitude journal
+            </p>
+          </div>
+          <div class="stats">
+            <div><strong>👥 5 accepted</strong></div>
+            <div style="color: var(--muted); margin-top: 0.2rem">
+              52% complete
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">Day-wise progress · tap checkbox to mark complete</p>
+
+        <div class="table-wrap">
+          <table id="grid">
+            <thead>
+              <tr>
+                <th class="name">Devotee</th>
+                <!-- days filled by script -->
+                <th class="done">Done</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const DAYS = 21;
+      const checkSvg =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+      function pattern(upto, extra = []) {
+        return Array.from({ length: DAYS }, (_, i) => i < upto || extra.includes(i));
+      }
+
+      const people = [
+        { name: "Harsha", days: pattern(12, [13, 14]) },
+        { name: "Radha Priya Dasi", days: pattern(10, [11]) },
+        { name: "Govinda Das", days: pattern(8, [9, 11]) },
+        { name: "Tulasi Devi", days: pattern(14) },
+        { name: "Amrita Kirtan Das", days: pattern(5, [7, 8]) },
+      ];
+
+      const thead = document.querySelector("#grid thead tr");
+      const doneTh = thead.querySelector(".done");
+      for (let d = 1; d <= DAYS; d++) {
+        const th = document.createElement("th");
+        th.textContent = "D" + d;
+        thead.insertBefore(th, doneTh);
+      }
+
+      const tbody = document.querySelector("#grid tbody");
+      for (const p of people) {
+        const tr = document.createElement("tr");
+        const nameTd = document.createElement("td");
+        nameTd.className = "name";
+        nameTd.textContent = p.name;
+        tr.appendChild(nameTd);
+
+        let done = 0;
+        p.days.forEach((on) => {
+          if (on) done++;
+          const td = document.createElement("td");
+          const box = document.createElement("div");
+          box.className = "check" + (on ? " on" : "");
+          if (on) box.innerHTML = checkSvg;
+          td.appendChild(box);
+          tr.appendChild(td);
+        });
+
+        const doneTd = document.createElement("td");
+        doneTd.className = "done";
+        doneTd.textContent = done + "/" + DAYS;
+        tr.appendChild(doneTd);
+        tbody.appendChild(tr);
+      }
+    </script>
+  </body>
+</html>

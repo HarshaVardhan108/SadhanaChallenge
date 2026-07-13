@@ -1,0 +1,649 @@
+@import "tailwindcss";
+
+:root {
+  /* Style guide palette — Beautiful image.png */
+  --krishna-blue: #1a4fa3;
+  --golden-yellow: #ffd54f;
+  --lotus-pink: #ffc0cb;
+  --tulasi-green: #6fbf73;
+  --sky-blue: #a8e6ff;
+  --peacock-blue: #006d77;
+  --warm-cream: #fff8e7;
+  --temple-white: #fafafa;
+  --soft-orange: #ffb347;
+  --deep-indigo: #2a2e6e;
+  --light-lavender: #ead6ff;
+  --sandal-brown: #8d6e63;
+  --gold-border: rgba(255, 213, 79, 0.55);
+  --glass-bg: #ffffff;
+  --glass-bg-strong: #ffffff;
+  --text-primary: #2a2e6e;
+  --text-muted: #5a6478;
+  --background: #fff8e7;
+  --foreground: #2a2e6e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-krishna: #1a4fa3;
+  --color-gold: #ffd54f;
+  --color-cream: #fff8e7;
+  --color-lotus: #ffc0cb;
+  --color-tulasi: #6fbf73;
+  --color-sky: #a8e6ff;
+  --color-temple: #fafafa;
+  --color-peacock: #006d77;
+  --color-saffron: #ffb347;
+  --color-indigo: #2a2e6e;
+  --color-lavender: #ead6ff;
+  --color-sandal: #8d6e63;
+  --font-sans: var(--font-poppins);
+  --font-serif: var(--font-baskerville);
+  --font-sanskrit: var(--font-devanagari);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--warm-cream);
+  color: var(--text-primary);
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  overflow-x: hidden;
+  min-height: 100dvh;
+  /* Prevent iOS text size adjust glitches */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Comfortable thumb targets on mobile */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-serif {
+  font-family: var(--font-baskerville), Georgia, serif;
+}
+
+/* Intro splash — soft lotus petals over Vrindavan background */
+@keyframes intro-petal-fall {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.intro-petal {
+  animation-name: intro-petal-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/*
+ * Intro must cover login on first paint (before JS hydrates).
+ * Solid fill so login never peeks through while images load.
+ * data-intro-done is set by a blocking script when already played this session.
+ * Animations are pure CSS so SSR HTML attributes match the client (no framer-motion).
+ */
+.bhakti-intro-splash,
+#bhakti-intro-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  background: #0f193c;
+  opacity: 1;
+  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bhakti-intro-splash--exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html[data-intro-done="1"] .bhakti-intro-splash,
+html[data-intro-done="1"] #bhakti-intro-splash {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+@keyframes bhakti-intro-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.bhakti-intro-zoom {
+  animation: bhakti-intro-zoom 5s ease-out forwards;
+}
+
+@keyframes bhakti-intro-glow {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  45% {
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0.45;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.bhakti-intro-glow {
+  background: radial-gradient(
+    circle,
+    rgba(255, 213, 79, 0.35) 0%,
+    rgba(255, 183, 71, 0.12) 40%,
+    transparent 70%
+  );
+  filter: blur(10px);
+  animation: bhakti-intro-glow 2.2s ease-out forwards;
+}
+
+@keyframes bhakti-intro-lotus {
+  from {
+    opacity: 0;
+    transform: scale(2.2) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.bhakti-intro-lotus {
+  animation: bhakti-intro-lotus 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@keyframes bhakti-intro-title {
+  0% {
+    opacity: 0;
+    transform: scale(3.2);
+    filter: blur(12px);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(0.94);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.bhakti-intro-title {
+  animation: bhakti-intro-title 1.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+@keyframes bhakti-intro-line {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: min(280px, 55vw);
+    opacity: 1;
+  }
+}
+
+.bhakti-intro-line {
+  width: 0;
+  animation: bhakti-intro-line 0.85s ease-out 1.55s both;
+}
+
+@keyframes bhakti-intro-sub {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bhakti-intro-sub {
+  animation: bhakti-intro-sub 0.9s ease-out 1.9s both;
+}
+
+.font-sanskrit {
+  font-family: var(--font-devanagari), "Noto Serif Devanagari", serif;
+}
+
+/* Style-guide cards: soft cream edges, golden hairline */
+.glass {
+  background: #ffffff;
+  border: 1px solid rgba(255, 213, 79, 0.45);
+  box-shadow: 0 4px 18px rgba(42, 46, 110, 0.06);
+}
+
+.glass-strong {
+  background: #fafafa;
+  border: 1px solid rgba(255, 213, 79, 0.5);
+  box-shadow: 0 6px 22px rgba(42, 46, 110, 0.08);
+}
+
+.glass-gold {
+  background: linear-gradient(145deg, #ffffff 0%, #fff8e7 50%, #fff3c4 100%);
+  border: 1px solid rgba(255, 213, 79, 0.6);
+  box-shadow: 0 4px 20px rgba(255, 213, 79, 0.15);
+}
+
+/* Soft page wash (readable; not full Vrindavan art) */
+.app-wash {
+  background:
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(168, 230, 255, 0.25), transparent 55%),
+    radial-gradient(ellipse 60% 30% at 100% 20%, rgba(255, 192, 203, 0.12), transparent 50%),
+    #fff8e7;
+}
+
+/* Card lift — desktop only (avoid sticky hover on touch) */
+.card-lift {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.35s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 16px 32px rgba(26, 79, 163, 0.12),
+      0 0 0 1px rgba(255, 213, 79, 0.35);
+  }
+}
+.card-lift:active {
+  transform: scale(0.99);
+}
+
+/* Button glow */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s ease;
+}
+.btn-glow:hover {
+  box-shadow:
+    0 0 20px rgba(255, 213, 79, 0.55),
+    0 0 40px rgba(26, 79, 163, 0.25);
+  transform: translateY(-1px);
+}
+.btn-glow:active {
+  transform: scale(0.98);
+}
+
+/* Divine gradient text */
+.text-divine {
+  background: linear-gradient(135deg, #1a4fa3 0%, #006d77 50%, #ffd54f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gold {
+  background: linear-gradient(135deg, #c9a227 0%, #ffd54f 50%, #ffe082 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 248, 231, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ffd54f, #1a4fa3);
+  border-radius: 99px;
+}
+
+/* Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(3deg);
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes petal-fall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(110vh) translateX(40px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cloud-drift {
+  0% {
+    transform: translateX(-5%);
+  }
+  100% {
+    transform: translateX(105vw);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    filter: blur(4px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(2px);
+  }
+}
+
+@keyframes diya-flicker {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes bell-swing {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes note-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) translateX(20px) scale(1.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes lotus-bloom {
+  0% {
+    transform: scale(0.85) rotate(-5deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes river-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes water-ripple {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes click-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes tree-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg) translateX(0);
+  }
+  50% {
+    transform: rotate(1.5deg) translateX(2px);
+  }
+}
+
+@keyframes bird-fly {
+  0% {
+    transform: translateX(-10vw) translateY(0);
+  }
+  25% {
+    transform: translateX(25vw) translateY(-15px);
+  }
+  50% {
+    transform: translateX(50vw) translateY(5px);
+  }
+  75% {
+    transform: translateX(75vw) translateY(-10px);
+  }
+  100% {
+    transform: translateX(110vw) translateY(0);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+.animate-diya {
+  animation: diya-flicker 1.5s ease-in-out infinite;
+}
+.animate-sway {
+  animation: sway 4s ease-in-out infinite;
+}
+.animate-bell {
+  animation: bell-swing 2.5s ease-in-out infinite;
+  transform-origin: top center;
+}
+.animate-lotus-bloom {
+  animation: lotus-bloom 2s ease-out forwards;
+}
+.animate-water-ripple {
+  animation: water-ripple 4s ease-out infinite;
+}
+.animate-tree-sway {
+  animation: tree-sway 5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+/* Vrindavan scene layers */
+.vrindavan-sky {
+  background: linear-gradient(
+    180deg,
+    #7ec8e8 0%,
+    #a8e6ff 15%,
+    #ffd4a3 40%,
+    #ffb347 55%,
+    #ffe0b2 70%,
+    #fff8e7 100%
+  );
+}
+
+.vrindavan-login {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 213, 79, 0.35) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(111, 191, 115, 0.25) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(168, 230, 255, 0.3) 0%, transparent 50%),
+    linear-gradient(
+      180deg,
+      #5ba3d0 0%,
+      #8ecae6 18%,
+      #ffd4a3 42%,
+      #ffc078 58%,
+      #c8e6c9 78%,
+      #a5d6a7 100%
+    );
+}
+
+.river-band {
+  background: linear-gradient(
+    90deg,
+    rgba(100, 181, 246, 0.5),
+    rgba(79, 195, 247, 0.65),
+    rgba(129, 212, 250, 0.5),
+    rgba(79, 195, 247, 0.65),
+    rgba(100, 181, 246, 0.5)
+  );
+  background-size: 200% 100%;
+  animation: river-flow 12s linear infinite;
+}
+
+/* Progress bar shimmer */
+.progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    #1a4fa3 0%,
+    #ffd54f 40%,
+    #1a4fa3 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* Focus accessible */
+:focus-visible {
+  outline: 2px solid #ffd54f;
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 213, 79, 0.4);
+  color: #1a2f5a;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
