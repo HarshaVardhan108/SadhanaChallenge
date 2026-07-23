@@ -6,23 +6,30 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { LotusProgress } from "@/components/ui/LotusProgress";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { quotes, festivals } from "@/lib/data";
+import { quotes } from "@/lib/data";
 import {
   loadChallengesWithDemo,
   challengeProgress,
   formatChallengeDate,
   getLoggedInUserProfile,
   findMyParticipant,
+  getMyJoinedChallenges,
+  getParticipantActiveDayAction,
+  markOwnActiveDayComplete,
+  participantCompletedCount,
   saveChallenges,
   challengePath,
   type LocalUserProfile,
   type SavedChallenge,
 } from "@/lib/challenges";
+import {
+  getDailyStreakSnapshot,
+  markTodayComplete,
+  type DailyStreakSnapshot,
+} from "@/lib/daily-streak";
 import { isGuestUser } from "@/lib/guest";
 import {
   Flame,
-  CloudSun,
-  Calendar,
   Sparkles,
   BookOpen,
   ChevronRight,
@@ -30,45 +37,114 @@ import {
   Globe,
   LogIn,
   UserPlus,
+  Check,
 } from "lucide-react";
 
 const ringActivities = [
-  { name: "Chanting", detail: "Start japa", icon: "🕉️", href: "/challenges" },
-  { name: "Reading", detail: "Bhagavad Gita", icon: "📖", href: "/reading" },
-  { name: "Shlokas", detail: "Learn verses", icon: "📜", href: "/shlokas" },
-  { name: "Challenges", detail: "Create path", icon: "✨", href: "/challenges" },
-  { name: "Prasadam", detail: "Offer food", icon: "🍲", href: "/challenges/custom" },
-  { name: "Seva", detail: "Serve", icon: "🙏", href: "/community" },
-  { name: "Gratitude", detail: "Journal", icon: "✍️", href: "/challenges/custom" },
-  { name: "Prayer", detail: "Arati", icon: "🪔", href: "/challenges" },
+  {
+    name: "Challenges",
+    detail: "Create path",
+    icon: "✨",
+    href: "/challenges",
+    enabled: true,
+  },
+  {
+    name: "Shlokas",
+    detail: "Learn verses",
+    icon: "📜",
+    href: "/shlokas",
+    enabled: true,
+  },
+  {
+    name: "Chanting",
+    detail: "Start japa",
+    icon: "🕉️",
+    href: "/challenges",
+    enabled: false,
+  },
+  {
+    name: "Reading",
+    detail: "Bhagavad Gita",
+    icon: "📖",
+    href: "/reading",
+    enabled: false,
+  },
+  {
+    name: "Prasadam",
+    detail: "Offer food",
+    icon: "🍲",
+    href: "/challenges/custom",
+    enabled: false,
+  },
+  {
+    name: "Seva",
+    detail: "Serve",
+    icon: "🙏",
+    href: "/community",
+    enabled: false,
+  },
+  {
+    name: "Gratitude",
+    detail: "Journal",
+    icon: "✍️",
+    href: "/challenges/custom",
+    enabled: false,
+  },
+  {
+    name: "Prayer",
+    detail: "Arati",
+    icon: "🪔",
+    href: "/challenges",
+    enabled: false,
+  },
 ];
 
 function ChallengeSummaryCard({
   challenge,
   isGuest,
   user,
+  onMarkedComplete,
 }: {
   challenge: SavedChallenge;
   isGuest: boolean;
   user: LocalUserProfile | null;
+  onMarkedComplete?: (next: SavedChallenge[]) => void;
 }) {
   const prog = challengeProgress(challenge);
   const accepted = challenge.participants.filter((p) => p.accepted).length;
   const mine = findMyParticipant(challenge, user);
+  const myDays = mine ? participantCompletedCount(mine, challenge) : 0;
   const href = challengePath(challenge.id);
   const isPublic = challenge.visibility === "public";
+  const isShloka = challenge.type === "shloka";
+  const dayAction =
+    !isGuest && isShloka && user
+      ? getParticipantActiveDayAction(challenge, user)
+      : null;
+  // Personal progress for logged-in members; group % for guests
+  const barPct = mine
+    ? Math.round((myDays / Math.max(1, challenge.days)) * 100)
+    : prog.pct;
+
+  const handleMarkComplete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !dayAction?.canMarkComplete) return;
+    const next = markOwnActiveDayComplete(challenge.id, user);
+    onMarkedComplete?.(next);
+  };
 
   return (
-    <Link href={href} className="block">
-      <GlassCard
-        padding="p-4"
-        lift={false}
-        className="flex h-full flex-col transition hover:border-krishna/45 active:scale-[0.99]"
-      >
+    <GlassCard
+      padding="p-4"
+      lift={false}
+      className="flex h-full flex-col transition hover:border-krishna/45"
+    >
+      <Link href={href} className="block min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-serif text-lg font-bold leading-snug text-krishna">
-              {challenge.type === "shloka" ? "📜 " : "🎨 "}
+              {isShloka ? "📜 " : "🎨 "}
               {challenge.name}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
@@ -79,9 +155,6 @@ function ChallengeSummaryCard({
                 ? ` · ${formatChallengeDate(challenge.createdAt)}`
                 : ""}
             </p>
-            <p className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">
-              ID: {challenge.id}
-            </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             {isPublic ? (
@@ -91,12 +164,12 @@ function ChallengeSummaryCard({
               </span>
             ) : (
               <span className="rounded-full bg-tulasi/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-800">
-                Active
+                Private
               </span>
             )}
             {mine && (
               <span className="rounded-full bg-krishna px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
-                You
+                Joined
               </span>
             )}
             <ChevronRight className="h-5 w-5 text-peacock" />
@@ -114,33 +187,62 @@ function ChallengeSummaryCard({
             <span className="inline-flex items-center gap-1 text-[var(--text-muted)]">
               <Users className="h-3.5 w-3.5" />
               {accepted} joined
+              {mine ? ` · You ${myDays}/${challenge.days}` : ""}
             </span>
             <span className="font-bold tabular-nums text-krishna">
-              {prog.pct}%
+              {barPct}%
             </span>
           </div>
-          <ProgressBar value={prog.pct} showLabel={false} height="h-2" />
+          <ProgressBar value={barPct} showLabel={false} height="h-2" />
         </div>
 
         <p className="mt-3 text-xs font-semibold text-peacock">
           {isGuest ? "View challenge →" : "Open challenge →"}
         </p>
-      </GlassCard>
-    </Link>
+      </Link>
+
+      {/* Shloka challenges: Mark as complete for the active 24h day */}
+      {dayAction && dayAction.phase === "active" && (
+        <div className="mt-3 border-t border-gold/25 pt-3">
+          {dayAction.canMarkComplete ? (
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              size="sm"
+              onClick={handleMarkComplete}
+            >
+              <Check className="h-4 w-4" />
+              Mark day {dayAction.dayNumber} complete
+            </Button>
+          ) : dayAction.isComplete ? (
+            <p className="flex items-center justify-center gap-1.5 rounded-xl border border-tulasi/30 bg-tulasi/10 py-2 text-xs font-semibold text-tulasi">
+              <Check className="h-3.5 w-3.5" />
+              Day {dayAction.dayNumber} complete
+            </p>
+          ) : (
+            <p className="text-center text-xs text-[var(--text-muted)]">
+              Day {dayAction.dayNumber} window not available
+            </p>
+          )}
+        </div>
+      )}
+    </GlassCard>
   );
 }
 
 export default function DashboardPage() {
   const quote = quotes[0];
-  const nextFestivals = festivals.filter((f) => f.daysLeft > 0).slice(0, 2);
   const [displayName, setDisplayName] = useState("Devotee");
   const [isGuest, setIsGuest] = useState(false);
   const [user, setUser] = useState<LocalUserProfile | null>(null);
   const [myChallenges, setMyChallenges] = useState<SavedChallenge[]>([]);
+  const [streak, setStreak] = useState<DailyStreakSnapshot | null>(null);
 
   useEffect(() => {
     const guest = isGuestUser();
     setIsGuest(guest);
+    setStreak(getDailyStreakSnapshot());
 
     if (guest) {
       setDisplayName("Guest");
@@ -194,7 +296,33 @@ export default function DashboardPage() {
     [myChallenges]
   );
 
-  const listedChallenges = isGuest ? publicChallenges : myChallenges;
+  /** Logged-in: only challenges created/joined (synced with Challenges hub). */
+  const joinedChallenges = useMemo(
+    () => getMyJoinedChallenges(myChallenges, user),
+    [myChallenges, user]
+  );
+
+  const listedChallenges = isGuest ? publicChallenges : joinedChallenges;
+
+  const myShlokaChallenges = useMemo(
+    () => joinedChallenges.filter((c) => c.type === "shloka"),
+    [joinedChallenges]
+  );
+
+  const handleMarkToday = () => {
+    setStreak(markTodayComplete());
+  };
+
+  const refreshChallenges = (next: SavedChallenge[]) => {
+    setMyChallenges(next);
+  };
+
+  const handleMarkShlokaDay = (challengeId: string) => {
+    const profile = getLoggedInUserProfile();
+    if (!profile) return;
+    const next = markOwnActiveDayComplete(challengeId, profile);
+    setMyChallenges(next);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -277,10 +405,86 @@ export default function DashboardPage() {
                 challenge={c}
                 isGuest={isGuest}
                 user={user}
+                onMarkedComplete={refreshChallenges}
               />
             ))}
           </div>
         </section>
+      )}
+
+      {/* Mark as complete — only when in one or more shloka challenges */}
+      {!isGuest && user && myShlokaChallenges.length > 0 && (
+        <GlassCard strong padding="p-4 sm:p-5" lift={false}>
+          <div className="mb-3 flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-krishna" />
+            <div>
+              <h2 className="font-serif text-lg font-bold text-krishna">
+                Mark as complete
+              </h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                Your active shloka challenge day (24-hour window)
+              </p>
+            </div>
+          </div>
+          <ul className="space-y-3">
+            {myShlokaChallenges.map((c) => {
+              const action = getParticipantActiveDayAction(c, user);
+              if (!action) return null;
+              return (
+                <li
+                  key={c.id}
+                  className="rounded-xl border border-gold/30 bg-cream/40 px-3 py-3 sm:px-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-krishna">
+                        📜 {c.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                        {action.phase === "not_started" &&
+                          "Challenge has not started yet"}
+                        {action.phase === "finished" &&
+                          "Challenge days are finished"}
+                        {action.phase === "active" &&
+                          `Day ${action.dayNumber} of ${c.days}`}
+                      </p>
+                    </div>
+                    {action.phase === "active" && action.canMarkComplete && (
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleMarkShlokaDay(c.id)}
+                      >
+                        <Check className="h-4 w-4" />
+                        Mark as complete
+                      </Button>
+                    )}
+                    {action.phase === "active" && action.isComplete && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-tulasi/15 px-2.5 py-1 text-xs font-semibold text-tulasi">
+                        <Check className="h-3.5 w-3.5" />
+                        Completed today
+                      </span>
+                    )}
+                    {action.phase === "active" &&
+                      !action.canMarkComplete &&
+                      !action.isComplete && (
+                        <span className="text-xs text-[var(--text-muted)]">
+                          Window closed
+                        </span>
+                      )}
+                  </div>
+                  <Link
+                    href={challengePath(c.id)}
+                    className="mt-2 inline-flex text-xs font-semibold text-peacock hover:underline"
+                  >
+                    Open challenge →
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </GlassCard>
       )}
 
       {isGuest && publicChallenges.length === 0 && (
@@ -308,86 +512,72 @@ export default function DashboardPage() {
         </GlassCard>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <GlassCard
-              padding="p-3 sm:p-4"
-              className="flex items-center gap-3"
-              lift={false}
-            >
-              <CloudSun className="h-8 w-8 shrink-0 text-saffron" />
-              <div>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Vrindavan weather
-                </p>
-                <p className="font-serif text-lg font-bold text-krishna">
-                  28°C · Morning
-                </p>
-              </div>
-            </GlassCard>
-            <GlassCard
-              padding="p-3 sm:p-4"
-              className="flex items-center gap-3"
-              lift={false}
-            >
-              <Calendar className="h-8 w-8 shrink-0 text-krishna" />
-              <div>
-                <p className="text-xs text-[var(--text-muted)]">Upcoming</p>
-                {nextFestivals[0] ? (
-                  <p className="text-sm font-semibold text-peacock">
-                    {nextFestivals[0].emoji} {nextFestivals[0].name} ·{" "}
-                    {nextFestivals[0].daysLeft}d
-                  </p>
-                ) : (
-                  <p className="text-sm text-krishna">See festivals</p>
-                )}
-              </div>
-            </GlassCard>
-          </div>
-
-          {nextFestivals.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {nextFestivals.map((f) => (
-                <span
-                  key={f.name}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-white px-2.5 py-1 text-xs font-medium text-krishna"
-                >
-                  {f.emoji} {f.name} · {f.daysLeft} Days Left
-                </span>
-              ))}
-            </div>
-          )}
-
           <GlassCard strong padding="p-4 sm:p-6" lift={false}>
             <div className="flex flex-col items-center">
               <LotusProgress
-                completed={0}
-                total={21}
+                completed={streak?.lotusCompleted ?? 0}
+                total={streak?.lotusTotal ?? 21}
                 size={180}
                 title="YOUR LOTUS GARDEN"
               />
               <p className="mt-2 max-w-sm text-center text-sm text-[var(--text-muted)]">
-                Complete your first day of sadhana to bloom a petal.
+                Synced with your{" "}
+                <strong className="font-semibold text-krishna">
+                  Daily Streak
+                </strong>
+                — not challenges. Mark today to bloom a petal.
               </p>
-              <Link href="/challenges" className="mt-4 w-full max-w-xs">
-                <Button variant="primary" fullWidth>
-                  Start a Challenge
-                </Button>
-              </Link>
+              <p className="mt-1 text-xs font-medium text-peacock">
+                Streak {streak?.currentStreak ?? 0} day
+                {(streak?.currentStreak ?? 0) === 1 ? "" : "s"} · Garden{" "}
+                {streak?.lotusCompleted ?? 0}/{streak?.lotusTotal ?? 21}
+              </p>
+              <div className="mt-4 w-full max-w-xs">
+                {streak?.markedToday ? (
+                  <Button variant="outline" fullWidth disabled>
+                    <Check className="h-4 w-4" />
+                    Today&apos;s offering marked
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={handleMarkToday}
+                  >
+                    <Flame className="h-4 w-4" />
+                    Mark today&apos;s offering
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {ringActivities.map((a) => (
-                <Link
-                  key={a.name}
-                  href={a.href}
-                  className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-gold/35 bg-cream px-2 py-2 text-center active:bg-white"
-                >
-                  <span className="text-lg">{a.icon}</span>
-                  <span className="text-xs font-semibold text-krishna">
-                    {a.name}
-                  </span>
-                </Link>
-              ))}
+              {ringActivities.map((a) =>
+                a.enabled ? (
+                  <Link
+                    key={a.name}
+                    href={a.href}
+                    className="flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl border border-gold/35 bg-cream px-2 py-2 text-center active:bg-white"
+                  >
+                    <span className="text-lg">{a.icon}</span>
+                    <span className="text-xs font-semibold text-krishna">
+                      {a.name}
+                    </span>
+                  </Link>
+                ) : (
+                  <div
+                    key={a.name}
+                    aria-disabled="true"
+                    title="Coming soon"
+                    className="flex min-h-14 cursor-not-allowed flex-col items-center justify-center gap-0.5 rounded-xl border border-gold/20 bg-cream/50 px-2 py-2 text-center opacity-40"
+                  >
+                    <span className="text-lg grayscale">{a.icon}</span>
+                    <span className="text-xs font-semibold text-[var(--text-muted)]">
+                      {a.name}
+                    </span>
+                  </div>
+                )
+              )}
             </div>
           </GlassCard>
 
@@ -397,9 +587,22 @@ export default function DashboardPage() {
                 <Flame className="h-3.5 w-3.5" /> Daily Streak
               </p>
               <p className="mt-1 font-serif text-4xl font-bold text-krishna">
-                0
+                {streak?.currentStreak ?? 0}
               </p>
-              <p className="text-sm text-peacock">Days · Start today!</p>
+              <p className="text-sm text-peacock">
+                {(streak?.currentStreak ?? 0) > 0
+                  ? `Best ever: ${streak?.bestStreak ?? 0} days · same as lotus`
+                  : "Mark today’s offering to start your streak"}
+              </p>
+              {!streak?.markedToday && (
+                <button
+                  type="button"
+                  onClick={handleMarkToday}
+                  className="mt-3 text-xs font-semibold text-krishna underline-offset-2 hover:underline"
+                >
+                  Mark today →
+                </button>
+              )}
             </GlassCard>
 
             <GlassCard padding="p-4" lift={false}>
@@ -421,9 +624,21 @@ export default function DashboardPage() {
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {[
-                { label: "Rounds", value: "0", icon: "🕉️" },
-                { label: "Reading", value: "0 hrs", icon: "📖" },
-                { label: "Shlokas", value: "0", icon: "📜" },
+                {
+                  label: "Streak",
+                  value: String(streak?.currentStreak ?? 0),
+                  icon: "🔥",
+                },
+                {
+                  label: "Days marked",
+                  value: String(streak?.totalDays ?? 0),
+                  icon: "🪷",
+                },
+                {
+                  label: "Garden %",
+                  value: `${streak?.lotusPercent ?? 0}%`,
+                  icon: "📜",
+                },
               ].map((s) => (
                 <div
                   key={s.label}

@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { OfferingToast } from "@/components/ambient/OfferingToast";
 import {
+  InviteDevoteesPicker,
+  type InviteableUser,
+} from "@/components/challenges/InviteDevoteesPicker";
+import {
   buildParticipants,
   getCreatorNameFromStorage,
   getLoggedInUserProfile,
@@ -48,7 +52,9 @@ export default function CustomChallengePage() {
     "reading",
     "shlokas",
   ]);
-  const [invites, setInvites] = useState("");
+  const [selectedInvitees, setSelectedInvitees] = useState<InviteableUser[]>(
+    []
+  );
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
@@ -69,13 +75,17 @@ export default function CustomChallengePage() {
       return;
     }
     try {
-      const inviteList =
+      const inviteInputs =
         visibility === "public"
-          ? invites
-              .split(/[,;\n]/)
-              .map((s) => s.trim())
-              .filter(Boolean)
+          ? selectedInvitees.map((u) => ({
+              name: u.fullName,
+              userId: u.id,
+              email: u.email,
+            }))
           : [];
+      const inviteLabels = inviteInputs.map(
+        (i) => i.email || i.name
+      );
       const creatorName = getCreatorNameFromStorage();
       const profile = getLoggedInUserProfile();
       const payload: SavedChallenge = {
@@ -88,13 +98,13 @@ export default function CustomChallengePage() {
         activityLabels: ACTIVITY_OPTIONS.filter((a) =>
           activities.includes(a.id)
         ).map((a) => a.label),
-        invites: inviteList,
+        invites: inviteLabels,
         visibility,
         createdAt: new Date().toISOString(),
         createdBy: creatorName,
         participants: buildParticipants(
           creatorName,
-          inviteList,
+          inviteInputs,
           durationDays,
           profile?.id
         ),
@@ -248,7 +258,7 @@ export default function CustomChallengePage() {
                 type="button"
                 onClick={() => {
                   setVisibility(v);
-                  if (v === "private") setInvites("");
+                  if (v === "private") setSelectedInvitees([]);
                 }}
                 className={cn(
                   "min-h-11 flex-1 rounded-xl border py-2.5 capitalize",
@@ -262,14 +272,10 @@ export default function CustomChallengePage() {
             ))}
           </div>
           {visibility === "public" && (
-            <div className="mt-4">
-              <Input
-                label="Invite Devotees (emails or names, comma-separated)"
-                placeholder="friend@example.com..."
-                value={invites}
-                onChange={(e) => setInvites(e.target.value)}
-              />
-            </div>
+            <InviteDevoteesPicker
+              selected={selectedInvitees}
+              onChange={setSelectedInvitees}
+            />
           )}
           {visibility === "private" && (
             <p className="mt-3 text-sm text-[var(--text-muted)]">
@@ -306,6 +312,16 @@ export default function CustomChallengePage() {
                 <li>
                   <strong>Visibility:</strong> {visibility}
                 </li>
+                {visibility === "public" && (
+                  <li>
+                    <strong>Invites:</strong>{" "}
+                    {selectedInvitees.length
+                      ? selectedInvitees
+                          .map((u) => u.fullName)
+                          .join(", ")
+                      : "None yet"}
+                  </li>
+                )}
               </ul>
             </div>
           </div>

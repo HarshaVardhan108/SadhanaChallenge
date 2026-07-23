@@ -8,7 +8,6 @@ import {
   Home,
   Sparkles,
   BookOpen,
-  BookMarked,
   Trophy,
   Users,
   Award,
@@ -28,7 +27,6 @@ const mainNav = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/challenges", label: "Challenges", icon: Sparkles },
   { href: "/shlokas", label: "Shlokas", icon: BookOpen },
-  { href: "/reading", label: "Reading", icon: BookMarked },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/community", label: "Community", icon: Users },
 ];

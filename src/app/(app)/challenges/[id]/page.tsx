@@ -14,8 +14,10 @@ import {
   formatChallengeDate,
   getChallengeById,
   getLoggedInUserProfile,
+  getParticipantActiveDayAction,
   joinChallengeAsUser,
   loadChallengesWithDemo,
+  markOwnActiveDayComplete,
   saveChallenges,
   toggleOwnParticipantDay,
   toggleParticipantDay,
@@ -27,6 +29,7 @@ import { isGuestUser } from "@/lib/guest";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
+  Check,
   Globe,
   Lock,
   LogIn,
@@ -133,6 +136,14 @@ export default function ChallengeDetailPage() {
     setChallenge(next.find((c) => c.id === challenge.id) ?? null);
   }, [challenge, router]);
 
+  const handleMarkComplete = useCallback(() => {
+    if (!challenge) return;
+    const profile = getLoggedInUserProfile();
+    if (!profile) return;
+    const next = markOwnActiveDayComplete(challenge.id, profile);
+    setChallenge(next.find((c) => c.id === challenge.id) ?? null);
+  }, [challenge]);
+
   if (missing) {
     return (
       <div className="mx-auto max-w-lg py-10 text-center">
@@ -173,6 +184,10 @@ export default function ChallengeDetailPage() {
   const mine = findMyParticipant(challenge, user);
   const acceptedCount = challenge.participants.filter((p) => p.accepted).length;
   const myParticipantId = mine?.id ?? null;
+  const dayAction =
+    challenge.type === "shloka" && user && mine
+      ? getParticipantActiveDayAction(challenge, user)
+      : null;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -265,7 +280,18 @@ export default function ChallengeDetailPage() {
         )}
 
         <div className="mt-4">
+          <div className="mb-1 flex items-center justify-between text-xs">
+            <span className="text-[var(--text-muted)]">Group progress</span>
+            <span className="font-bold tabular-nums text-krishna">
+              {prog.pct}%
+            </span>
+          </div>
           <ProgressBar value={prog.pct} showLabel={false} height="h-2.5" />
+          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
+            Each day has a <strong className="font-semibold text-krishna">24-hour window</strong>.
+            Missed days show a red ✕ and are{" "}
+            <strong className="font-semibold text-red-600">not counted</strong>.
+          </p>
         </div>
 
         {isPublic && (
@@ -298,6 +324,36 @@ export default function ChallengeDetailPage() {
             </Button>
           ) : null}
         </div>
+
+        {/* Shloka: Mark as complete for active day when joined */}
+        {dayAction && dayAction.phase === "active" && (
+          <div className="mt-4 rounded-xl border border-gold/35 bg-cream/50 p-3 sm:p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-peacock">
+              Today · Day {dayAction.dayNumber} of {challenge.days}
+            </p>
+            {dayAction.canMarkComplete ? (
+              <Button
+                type="button"
+                variant="primary"
+                fullWidth
+                className="mt-2"
+                onClick={handleMarkComplete}
+              >
+                <Check className="h-4 w-4" />
+                Mark as complete
+              </Button>
+            ) : dayAction.isComplete ? (
+              <p className="mt-2 flex items-center justify-center gap-1.5 rounded-xl border border-tulasi/30 bg-tulasi/10 py-2.5 text-sm font-semibold text-tulasi">
+                <Check className="h-4 w-4" />
+                Day {dayAction.dayNumber} marked complete
+              </p>
+            ) : (
+              <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
+                This day&apos;s 24-hour window is not open for marking.
+              </p>
+            )}
+          </div>
+        )}
       </GlassCard>
 
       <GlassCard padding="p-3.5 sm:p-5" lift={false}>

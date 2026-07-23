@@ -8,7 +8,6 @@ import {
   Home,
   Sparkles,
   BookOpen,
-  BookMarked,
   Menu,
   Trophy,
   Users,
@@ -29,7 +28,6 @@ const tabs = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/challenges", label: "Challenges", icon: Sparkles },
   { href: "/shlokas", label: "Shlokas", icon: BookOpen },
-  { href: "/reading", label: "Reading", icon: BookMarked },
 ] as const;
 
 const guestTabs = [

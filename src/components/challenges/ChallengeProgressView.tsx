@@ -1,15 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 import {
+  assignTiedRanks,
+  canToggleChallengeDay,
   challengeProgress,
+  getDayStatus,
   participantCompletedCount,
+  participantMissedCount,
+  type ChallengeDayStatus,
   type ChallengeParticipant,
   type SavedChallenge,
 } from "@/lib/challenges";
-import { Check, ChevronDown, Flame, Lock, Trophy, Users } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Flame,
+  Lock,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -36,12 +48,67 @@ function rankLabel(rank: number): string {
   return `#${rank}`;
 }
 
-/** Longest consecutive completed-day run (for mobile streak badge). */
-function bestStreak(p: ChallengeParticipant): number {
+function statusLabel(status: ChallengeDayStatus): string {
+  switch (status) {
+    case "completed":
+      return "Done";
+    case "missed":
+      return "Missed";
+    case "active":
+      return "Today — mark within 24h";
+    case "upcoming":
+      return "Upcoming";
+  }
+}
+
+function dayCellClass(status: ChallengeDayStatus): string {
+  switch (status) {
+    case "completed":
+      return "border-tulasi bg-tulasi text-white shadow-sm";
+    case "missed":
+      return "border-red-500/70 bg-red-50 text-red-600";
+    case "active":
+      return "border-krishna bg-white text-krishna ring-2 ring-krishna/25";
+    case "upcoming":
+      return "border-gold/30 bg-cream/60 text-[var(--text-muted)] opacity-70";
+  }
+}
+
+function DayStatusIcon({
+  status,
+  dayNumber,
+  size = "sm",
+}: {
+  status: ChallengeDayStatus;
+  dayNumber: number;
+  size?: "sm" | "md";
+}) {
+  const iconClass = size === "md" ? "h-3.5 w-3.5 sm:h-4 sm:w-4" : "h-3.5 w-3.5";
+  if (status === "completed") {
+    return <Check className={iconClass} strokeWidth={3} />;
+  }
+  if (status === "missed") {
+    return <X className={iconClass} strokeWidth={3} />;
+  }
+  return <span>{dayNumber}</span>;
+}
+
+/** Longest consecutive completed-day run (missed/upcoming break the streak). */
+function bestStreak(
+  p: ChallengeParticipant,
+  challenge: Pick<SavedChallenge, "createdAt" | "days">,
+  nowMs: number
+): number {
   let best = 0;
   let run = 0;
-  for (let i = 0; i < p.completedDays.length; i++) {
-    if (p.completedDays[i]) {
+  for (let i = 0; i < challenge.days; i++) {
+    const status = getDayStatus(
+      challenge.createdAt,
+      i,
+      Boolean(p.completedDays[i]),
+      nowMs
+    );
+    if (status === "completed") {
       run += 1;
       best = Math.max(best, run);
     } else {
@@ -53,6 +120,7 @@ function bestStreak(p: ChallengeParticipant): number {
 
 type SortedParticipant = ChallengeParticipant & {
   done: number;
+  missed: number;
   pct: number;
   rank: number;
   streak: number;
@@ -61,26 +129,32 @@ type SortedParticipant = ChallengeParticipant & {
 
 function sortParticipants(
   challenge: SavedChallenge,
-  myParticipantId?: string | null
+  myParticipantId: string | null | undefined,
+  nowMs: number
 ): SortedParticipant[] {
   const accepted = challenge.participants.filter((p) => p.accepted);
-  const ranked = accepted
+  const sorted = accepted
     .map((p) => {
-      const done = participantCompletedCount(p);
+      const done = participantCompletedCount(p, challenge, nowMs);
+      const missed = participantMissedCount(p, challenge, nowMs);
       return {
         ...p,
         done,
+        missed,
         pct: Math.round((done / Math.max(1, challenge.days)) * 100),
-        streak: bestStreak(p),
+        streak: bestStreak(p, challenge, nowMs),
         rank: 0,
         isMe: Boolean(myParticipantId && p.id === myParticipantId),
       };
     })
+    // Rank only by days completed; name is tie-break for display order only
     .sort(
-      (a, b) =>
-        b.done - a.done || b.streak - a.streak || a.name.localeCompare(b.name)
-    )
-    .map((p, i) => ({ ...p, rank: i + 1 }));
+      (a, b) => b.done - a.done || a.name.localeCompare(b.name)
+    );
+
+  // Same days completed → same rank (dense: 1, 1, 2, 3…)
+  const ranks = assignTiedRanks(sorted.map((p) => p.done));
+  const ranked = sorted.map((p, i) => ({ ...p, rank: ranks[i] }));
 
   // Logged-in user always pinned at top for public boards
   if (myParticipantId) {
@@ -91,21 +165,23 @@ function sortParticipants(
   return ranked;
 }
 
-/** Week-chunked day dots — readable on narrow screens (7 columns). */
+/** Week-chunked day cells — 24h window status (done / missed / active / upcoming). */
 function DayDots({
-  days,
+  challenge,
   completedDays,
   interactive,
   onToggleDay,
   participantName,
+  nowMs,
 }: {
-  days: number;
+  challenge: SavedChallenge;
   completedDays: boolean[];
   interactive?: boolean;
   onToggleDay?: (dayIndex: number) => void;
   participantName: string;
+  nowMs: number;
 }) {
-  const cells = Array.from({ length: days }, (_, i) => i);
+  const cells = Array.from({ length: challenge.days }, (_, i) => i);
   const weeks: number[][] = [];
   for (let i = 0; i < cells.length; i += 7) {
     weeks.push(cells.slice(i, i + 7));
@@ -123,42 +199,43 @@ function DayDots({
           </p>
           <div className="grid grid-cols-7 gap-1.5">
             {week.map((d) => {
-              const checked = Boolean(completedDays[d]);
-              const className = cn(
-                "flex aspect-square min-h-9 w-full flex-col items-center justify-center rounded-lg border-2 text-[10px] font-semibold transition active:scale-95 sm:min-h-10",
-                checked
-                  ? "border-tulasi bg-tulasi text-white shadow-sm"
-                  : "border-gold/40 bg-white text-[var(--text-muted)]"
+              const status = getDayStatus(
+                challenge.createdAt,
+                d,
+                Boolean(completedDays[d]),
+                nowMs
               );
-              if (interactive && onToggleDay) {
+              const canToggle =
+                Boolean(interactive && onToggleDay) &&
+                canToggleChallengeDay(challenge.createdAt, d, nowMs);
+              const className = cn(
+                "flex aspect-square min-h-9 w-full flex-col items-center justify-center rounded-lg border-2 text-[10px] font-semibold transition sm:min-h-10",
+                dayCellClass(status),
+                canToggle && "active:scale-95 cursor-pointer",
+                !canToggle && interactive && "cursor-default"
+              );
+              if (canToggle && onToggleDay) {
                 return (
                   <button
                     key={d}
                     type="button"
                     onClick={() => onToggleDay(d)}
-                    aria-label={`${participantName} day ${d + 1} ${checked ? "completed" : "incomplete"}`}
-                    aria-pressed={checked}
+                    aria-label={`${participantName} day ${d + 1}: ${statusLabel(status)}`}
+                    aria-pressed={status === "completed"}
                     className={className}
                   >
-                    {checked ? (
-                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                    ) : (
-                      <span>{d + 1}</span>
-                    )}
+                    <DayStatusIcon status={status} dayNumber={d + 1} />
                   </button>
                 );
               }
               return (
                 <div
                   key={d}
-                  title={`Day ${d + 1}: ${checked ? "Done" : "Pending"}`}
+                  title={`Day ${d + 1}: ${statusLabel(status)}`}
+                  aria-label={`${participantName} day ${d + 1}: ${statusLabel(status)}`}
                   className={className}
                 >
-                  {checked ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                  ) : (
-                    <span>{d + 1}</span>
-                  )}
+                  <DayStatusIcon status={status} dayNumber={d + 1} />
                 </div>
               );
             })}
@@ -171,20 +248,23 @@ function DayDots({
 
 function ParticipantCard({
   p,
-  days,
+  challenge,
   colorIndex,
   defaultOpen,
   interactive,
   onToggleDay,
+  nowMs,
 }: {
   p: SortedParticipant;
-  days: number;
+  challenge: SavedChallenge;
   colorIndex: number;
   defaultOpen?: boolean;
   interactive?: boolean;
   onToggleDay?: (dayIndex: number) => void;
+  nowMs: number;
 }) {
   const [open, setOpen] = useState(Boolean(defaultOpen));
+  const days = challenge.days;
 
   return (
     <div
@@ -232,6 +312,11 @@ function ParticipantCard({
                 <span className="font-medium text-peacock">
                   {p.done} of {days} days
                 </span>
+                {p.missed > 0 && (
+                  <span className="ml-2 font-medium text-red-600">
+                    · {p.missed} missed
+                  </span>
+                )}
                 {p.streak > 0 && (
                   <span className="ml-2 inline-flex items-center gap-0.5 text-saffron">
                     <Flame className="h-3 w-3" />
@@ -239,7 +324,7 @@ function ParticipantCard({
                   </span>
                 )}
                 {p.isMe && interactive && (
-                  <span className="ml-2 text-tulasi">· edit your days</span>
+                  <span className="ml-2 text-tulasi">· mark today only</span>
                 )}
                 {!p.isMe && (
                   <span className="ml-2 text-[var(--text-muted)]">
@@ -260,19 +345,27 @@ function ParticipantCard({
               />
             </div>
           </div>
-          <div className="mt-2">
-            <ProgressBar value={p.pct} showLabel={false} height="h-2" />
-          </div>
           <div className="mt-2 flex flex-wrap gap-0.5" aria-hidden>
-            {Array.from({ length: Math.min(days, 21) }, (_, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2",
-                  p.completedDays[i] ? "bg-tulasi" : "bg-gold/35"
-                )}
-              />
-            ))}
+            {Array.from({ length: Math.min(days, 21) }, (_, i) => {
+              const status = getDayStatus(
+                challenge.createdAt,
+                i,
+                Boolean(p.completedDays[i]),
+                nowMs
+              );
+              return (
+                <span
+                  key={i}
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2",
+                    status === "completed" && "bg-tulasi",
+                    status === "missed" && "bg-red-500",
+                    status === "active" && "bg-krishna",
+                    status === "upcoming" && "bg-gold/35"
+                  )}
+                />
+              );
+            })}
             {days > 21 && (
               <span className="ml-0.5 text-[9px] text-[var(--text-muted)]">
                 +{days - 21}
@@ -293,25 +386,38 @@ function ParticipantCard({
         >
           <p className="mb-2 text-[11px] font-medium text-[var(--text-muted)]">
             {interactive
-              ? "Tap a day to mark complete or incomplete"
-              : "Day-by-day progress · view only"}
-            <span className="mt-1 flex flex-wrap items-center gap-3 text-[10px]">
+              ? "Each day has a 24-hour window. Mark today complete before time runs out — missed days show ✕ and do not count."
+              : "Day-by-day progress · view only · missed days do not count"}
+            <span className="mt-1.5 flex flex-wrap items-center gap-3 text-[10px]">
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-3 w-3 rounded border-2 border-tulasi bg-tulasi" />
+                <span className="inline-flex h-3 w-3 items-center justify-center rounded border-2 border-tulasi bg-tulasi text-white">
+                  <Check className="h-2 w-2" strokeWidth={3} />
+                </span>
                 Done
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-3 w-3 rounded border-2 border-gold/40 bg-white" />
-                Pending
+                <span className="inline-flex h-3 w-3 items-center justify-center rounded border-2 border-red-500/70 bg-red-50 text-red-600">
+                  <X className="h-2 w-2" strokeWidth={3} />
+                </span>
+                Missed
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-3 w-3 rounded border-2 border-krishna bg-white" />
+                Today
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="inline-block h-3 w-3 rounded border-2 border-gold/30 bg-cream/60 opacity-70" />
+                Upcoming
               </span>
             </span>
           </p>
           <DayDots
-            days={days}
+            challenge={challenge}
             completedDays={p.completedDays}
             interactive={interactive}
             onToggleDay={onToggleDay}
             participantName={p.name}
+            nowMs={nowMs}
           />
         </div>
       )}
@@ -325,11 +431,13 @@ function DesktopDayTable({
   sorted,
   editableParticipantId,
   onToggle,
+  nowMs,
 }: {
   challenge: SavedChallenge;
   sorted: SortedParticipant[];
   editableParticipantId?: string | null;
   onToggle?: (participantId: string, dayIndex: number) => void;
+  nowMs: number;
 }) {
   const dayCols = Array.from({ length: challenge.days }, (_, i) => i);
 
@@ -355,11 +463,14 @@ function DesktopDayTable({
             <th className="px-3 py-2.5 text-center text-xs font-semibold text-krishna">
               Done
             </th>
+            <th className="px-2 py-2.5 text-center text-xs font-semibold text-red-600">
+              Missed
+            </th>
           </tr>
         </thead>
         <tbody>
           {sorted.map((p, rowIdx) => {
-            const canEdit =
+            const isOwner =
               Boolean(onToggle) &&
               Boolean(editableParticipantId) &&
               p.id === editableParticipantId;
@@ -389,19 +500,31 @@ function DesktopDayTable({
                   </span>
                 </td>
                 {dayCols.map((d) => {
-                  const checked = Boolean(p.completedDays[d]);
-                  if (!canEdit) {
+                  const status = getDayStatus(
+                    challenge.createdAt,
+                    d,
+                    Boolean(p.completedDays[d]),
+                    nowMs
+                  );
+                  const canToggle =
+                    isOwner &&
+                    canToggleChallengeDay(challenge.createdAt, d, nowMs);
+                  const cellClass = cn(
+                    "mx-auto flex h-7 w-7 items-center justify-center rounded-md border-2 sm:h-8 sm:w-8",
+                    dayCellClass(status)
+                  );
+                  if (!canToggle) {
                     return (
                       <td key={d} className="px-1 py-1.5 text-center">
                         <span
-                          className={cn(
-                            "mx-auto flex h-7 w-7 items-center justify-center rounded-md border-2",
-                            checked
-                              ? "border-tulasi bg-tulasi text-white"
-                              : "border-gold/50 bg-white"
-                          )}
+                          title={statusLabel(status)}
+                          className={cellClass}
                         >
-                          {checked && <Check className="h-3.5 w-3.5" />}
+                          <DayStatusIcon
+                            status={status}
+                            dayNumber={d + 1}
+                            size="md"
+                          />
                         </span>
                       </td>
                     );
@@ -411,24 +534,24 @@ function DesktopDayTable({
                       <button
                         type="button"
                         onClick={() => onToggle?.(p.id, d)}
-                        aria-label={`${p.name} day ${d + 1} ${checked ? "completed" : "incomplete"}`}
-                        aria-pressed={checked}
-                        className={cn(
-                          "mx-auto flex h-7 w-7 items-center justify-center rounded-md border-2 transition active:scale-95 sm:h-8 sm:w-8",
-                          checked
-                            ? "border-tulasi bg-tulasi text-white shadow-sm"
-                            : "border-gold/50 bg-white hover:border-krishna/50"
-                        )}
+                        aria-label={`${p.name} day ${d + 1}: ${statusLabel(status)}`}
+                        aria-pressed={status === "completed"}
+                        className={cn(cellClass, "transition active:scale-95")}
                       >
-                        {checked && (
-                          <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        )}
+                        <DayStatusIcon
+                          status={status}
+                          dayNumber={d + 1}
+                          size="md"
+                        />
                       </button>
                     </td>
                   );
                 })}
                 <td className="px-3 py-2 text-center text-xs font-semibold tabular-nums text-peacock">
                   {p.done}/{challenge.days}
+                </td>
+                <td className="px-2 py-2 text-center text-xs font-semibold tabular-nums text-red-600">
+                  {p.missed}
                 </td>
               </tr>
             );
@@ -469,11 +592,18 @@ export function ChallengeProgressView({
   className,
   compact = false,
 }: ChallengeProgressViewProps) {
+  // Refresh when a 24h window rolls over so missed days appear without reload.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const sorted = useMemo(
-    () => sortParticipants(challenge, myParticipantId),
-    [challenge, myParticipantId]
+    () => sortParticipants(challenge, myParticipantId, nowMs),
+    [challenge, myParticipantId, nowMs]
   );
-  const prog = challengeProgress(challenge);
+  const prog = challengeProgress(challenge, nowMs);
   const me = sorted.find((p) => p.isMe) || null;
   const canEditMine = Boolean(myParticipantId && onToggle);
 
@@ -506,17 +636,17 @@ export function ChallengeProgressView({
           <p className="mt-1 text-xs text-[var(--text-muted)]">
             Rank {rankLabel(me.rank)} · {me.done} of {challenge.days} days (
             {me.pct}%)
+            {me.missed > 0 ? (
+              <span className="text-red-600"> · {me.missed} missed</span>
+            ) : null}
             {canEditMine
-              ? " · Tap days below to update only your progress"
+              ? " · Mark today complete within its 24-hour window"
               : ""}
           </p>
-          <div className="mt-2">
-            <ProgressBar value={me.pct} showLabel={false} height="h-2.5" />
-          </div>
         </div>
       )}
 
-      {/* Group summary */}
+      {/* Group summary — % shown as text; single progress bar lives on the challenge header */}
       <div
         className={cn(
           "rounded-2xl border border-gold/35 bg-gradient-to-br from-white to-cream/80",
@@ -533,15 +663,17 @@ export function ChallengeProgressView({
             {sorted.length} devotee{sorted.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="mt-2.5">
-          <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="text-[var(--text-muted)]">Group completion</span>
-            <span className="font-bold tabular-nums text-krishna">
-              {prog.pct}% · {prog.completed}/{prog.total} days logged
+        <p className="mt-2 text-xs text-[var(--text-muted)]">
+          Group completion:{" "}
+          <span className="font-bold tabular-nums text-krishna">
+            {prog.pct}% · {prog.completed}/{prog.total} days counted
+          </span>
+          {prog.missed > 0 && (
+            <span className="ml-2 font-semibold tabular-nums text-red-600">
+              · {prog.missed} missed (not counted)
             </span>
-          </div>
-          <ProgressBar value={prog.pct} showLabel={false} height="h-2.5" />
-        </div>
+          )}
+        </p>
         {leader && (
           <p className="mt-2 text-xs leading-relaxed text-[var(--text-muted)]">
             Leading:{" "}
@@ -555,7 +687,7 @@ export function ChallengeProgressView({
         <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/80 px-2 py-1 text-[11px] font-medium text-[var(--text-muted)]">
           <Lock className="h-3 w-3 shrink-0" aria-hidden />
           {canEditMine
-            ? "You can edit only your days — others are view only"
+            ? "Only today’s 24h window is editable — missed days stay ✕ and never count"
             : "View only — join this challenge to track your own days"}
         </p>
       </div>
@@ -564,7 +696,7 @@ export function ChallengeProgressView({
       <div className="space-y-2.5 md:hidden">
         <p className="text-[11px] text-[var(--text-muted)]">
           {me
-            ? "Your card is first. Expand it to mark your days. Other devotees are view-only."
+            ? "Your card is first. Expand it to mark today before the 24h window ends. Other devotees are view-only."
             : "Tap a devotee to view their day-by-day progress (read-only)."}
         </p>
         {sorted.map((p, i) => {
@@ -573,10 +705,11 @@ export function ChallengeProgressView({
             <ParticipantCard
               key={p.id}
               p={p}
-              days={challenge.days}
+              challenge={challenge}
               colorIndex={i}
               defaultOpen={p.isMe || i < defaultExpandTop}
               interactive={canEdit}
+              nowMs={nowMs}
               onToggleDay={
                 canEdit && onToggle
                   ? (dayIndex) => onToggle(p.id, dayIndex)
@@ -592,6 +725,7 @@ export function ChallengeProgressView({
         sorted={sorted}
         editableParticipantId={canEditMine ? myParticipantId : null}
         onToggle={canEditMine ? onToggle : undefined}
+        nowMs={nowMs}
       />
     </div>
   );

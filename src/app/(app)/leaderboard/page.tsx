@@ -1,142 +1,719 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { leaderboard } from "@/lib/data";
-import { cn, formatNumber } from "@/lib/utils";
-import { Trophy, Sparkles } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
+import { isGuestUser } from "@/lib/guest";
+import {
+  challengePath,
+  findMyParticipant,
+  formatChallengeDate,
+  getChallengeLeaderboardRows,
+  getLoggedInUserProfile,
+  getMyPublicChallenges,
+  loadChallengesWithDemo,
+  saveChallenges,
+  type LeaderboardRow,
+  type LocalUserProfile,
+  type SavedChallenge,
+} from "@/lib/challenges";
+import {
+  ChevronRight,
+  Crown,
+  Globe,
+  LogIn,
+  Trophy,
+  Users,
+} from "lucide-react";
 
-const tabs = [
-  { id: "Daily", label: "Daily" },
-  { id: "Weekly", label: "Weekly" },
-  { id: "Monthly", label: "Monthly" },
-  { id: "Temple", label: "Temple-wise" },
-  { id: "Country", label: "Country-wise" },
-  { id: "Friends", label: "Friends" },
-  { id: "Global", label: "Global" },
-] as const;
+/** Soft league labels from days completed vs challenge length. */
+function leagueForDays(daysCompleted: number, totalDays: number) {
+  const pct =
+    totalDays <= 0 ? 0 : Math.round((daysCompleted / totalDays) * 100);
+  if (pct >= 95)
+    return { name: "Legend", className: "bg-lavender text-indigo" };
+  if (pct >= 80)
+    return { name: "Champion", className: "bg-lotus/40 text-krishna" };
+  if (pct >= 65)
+    return { name: "Master", className: "bg-peacock/10 text-peacock" };
+  if (pct >= 50)
+    return { name: "Crystal", className: "bg-sky/40 text-peacock" };
+  if (pct >= 35)
+    return { name: "Gold", className: "bg-gold/40 text-krishna" };
+  if (pct >= 20)
+    return { name: "Silver", className: "bg-cream text-[var(--text-muted)]" };
+  return { name: "Bronze", className: "bg-saffron/25 text-sandal" };
+}
 
-type TabId = (typeof tabs)[number]["id"];
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
-export default function LeaderboardPage() {
-  const [tab, setTab] = useState<TabId>("Weekly");
-  const tabLabel = tabs.find((t) => t.id === tab)?.label ?? tab;
-  const rows = leaderboard; // all zeros for new user
+function avatarTone(rank: number): string {
+  if (rank === 1) return "from-gold to-saffron";
+  if (rank === 2) return "from-sky to-peacock";
+  if (rank === 3) return "from-saffron to-lotus";
+  return "from-krishna to-peacock";
+}
+
+function rankBadge(rank: number): string {
+  if (rank === 1) return "🥇";
+  if (rank === 2) return "🥈";
+  if (rank === 3) return "🥉";
+  return `#${rank}`;
+}
+
+function podiumTier(rank: number): 1 | 2 | 3 {
+  if (rank <= 1) return 1;
+  if (rank === 2) return 2;
+  return 3;
+}
+
+/** Shared podium person card (size differs mobile vs desktop). */
+function PodiumCard({
+  row,
+  totalDays,
+  compact = false,
+}: {
+  row: LeaderboardRow;
+  totalDays: number;
+  compact?: boolean;
+}) {
+  const league = leagueForDays(row.daysCompleted, totalDays);
+  const rank = row.rank;
+  const tier = podiumTier(rank);
+  const heights = compact
+    ? { 1: "h-14", 2: "h-10", 3: "h-8" }
+    : { 1: "h-24", 2: "h-16", 3: "h-14" };
+  const plinth =
+    tier === 1
+      ? "from-gold/80 to-saffron/70"
+      : tier === 2
+        ? "from-sky/70 to-peacock/30"
+        : "from-saffron/50 to-lotus/40";
+  const avatar = compact
+    ? "h-11 w-11 text-[11px]"
+    : "h-14 w-14 text-sm";
 
   return (
-    <div>
+    <div className="flex w-full min-w-0 flex-col items-center px-0.5">
+      {rank === 1 && (
+        <Crown
+          className={cn("mb-0.5 text-gold", compact ? "h-4 w-4" : "h-5 w-5")}
+          aria-hidden
+        />
+      )}
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-full bg-gradient-to-br font-bold text-white shadow-md",
+          avatar,
+          avatarTone(rank)
+        )}
+      >
+        {initials(row.name)}
+      </div>
+      <p
+        className={cn(
+          "mt-1 w-full truncate px-0.5 text-center font-semibold",
+          compact ? "text-[10px] leading-tight" : "text-xs",
+          row.isYou ? "text-peacock" : "text-krishna"
+        )}
+        title={row.name}
+      >
+        {row.name}
+        {row.isYou ? " ·You" : ""}
+      </p>
+      <div
+        className={cn(
+          "mt-0.5 inline-flex items-center gap-0.5 font-bold tabular-nums text-peacock",
+          compact ? "text-[10px]" : "text-xs"
+        )}
+      >
+        <Trophy
+          className={cn("shrink-0 text-gold", compact ? "h-2.5 w-2.5" : "h-3 w-3")}
+        />
+        {row.daysCompleted}
+        <span className="font-normal text-[var(--text-muted)]">
+          /{totalDays}
+        </span>
+      </div>
+      {!compact && (
+        <span
+          className={cn(
+            "mt-1 max-w-full truncate rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+            league.className
+          )}
+        >
+          {league.name}
+        </span>
+      )}
+      <div
+        className={cn(
+          "mt-1.5 flex w-full flex-col items-center justify-end rounded-t-lg bg-gradient-to-b sm:mt-2 sm:rounded-t-xl",
+          plinth,
+          heights[tier]
+        )}
+      >
+        <span
+          className={cn(
+            "mb-1 font-serif font-bold text-krishna/80",
+            compact ? "text-base" : "mb-1.5 text-2xl"
+          )}
+          title={`Rank ${rank}`}
+        >
+          {rankBadge(rank)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Mobile podium — compact 3-column stage (2nd | 1st | 3rd).
+ * Ties stack as small avatars in the same column.
+ */
+function MobilePodium({
+  rank1,
+  rank2,
+  rank3,
+  totalDays,
+}: {
+  rank1: LeaderboardRow[];
+  rank2: LeaderboardRow[];
+  rank3: LeaderboardRow[];
+  totalDays: number;
+}) {
+  const columns: { rank: number; rows: LeaderboardRow[]; order: string }[] = [
+    { rank: 2, rows: rank2, order: "order-1" },
+    { rank: 1, rows: rank1, order: "order-2" },
+    { rank: 3, rows: rank3, order: "order-3" },
+  ];
+
+  return (
+    <div className="sm:hidden">
+      <div className="grid grid-cols-3 items-end gap-1.5 px-2 pb-1 pt-1">
+        {columns.map(({ rank, rows, order }) => (
+          <div
+            key={rank}
+            className={cn(
+              "flex min-w-0 flex-col items-center justify-end gap-2",
+              order
+            )}
+          >
+            {rows.length === 0 ? (
+              <div
+                className="flex w-full flex-col items-center opacity-35"
+                aria-hidden
+              >
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-gold/50 bg-cream text-xs text-[var(--text-muted)]">
+                  —
+                </div>
+                <div
+                  className={cn(
+                    "mt-1.5 w-full rounded-t-lg bg-gradient-to-b from-gold/20 to-cream",
+                    rank === 1 ? "h-14" : rank === 2 ? "h-10" : "h-8"
+                  )}
+                />
+              </div>
+            ) : (
+              rows.map((row) => (
+                <PodiumCard
+                  key={row.participantId}
+                  row={row}
+                  totalDays={totalDays}
+                  compact
+                />
+              ))
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Tie strip: if many on one rank, names stay readable below */}
+      {(rank1.length > 1 || rank2.length > 1 || rank3.length > 1) && (
+        <p className="px-3 pb-3 text-center text-[10px] text-[var(--text-muted)]">
+          Tied ranks share the same step on the podium
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Mobile-friendly full-width rank row (same columns every time). */
+function RankListItem({
+  row,
+  totalDays,
+  compact,
+}: {
+  row: LeaderboardRow;
+  totalDays: number;
+  compact?: boolean;
+}) {
+  const league = leagueForDays(row.daysCompleted, totalDays);
+  return (
+    <div
+      className={cn(
+        "grid w-full grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-2",
+        compact ? "px-3 py-2.5" : "px-3 py-3 sm:px-4",
+        row.isYou && "bg-gold/15"
+      )}
+    >
+      <div className="flex justify-center">
+        <span
+          className={cn(
+            "inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+            row.rank <= 3
+              ? "bg-gradient-to-br from-gold/50 to-saffron/40 text-krishna"
+              : "bg-cream text-[var(--text-muted)]"
+          )}
+          title={`Rank ${row.rank}`}
+        >
+          {rankBadge(row.rank)}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-[11px] font-bold text-white shadow-sm",
+            avatarTone(row.rank)
+          )}
+        >
+          {initials(row.name)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-krishna">
+            {row.name}
+            {row.isYou && (
+              <span className="ml-1.5 inline-block rounded-full bg-krishna px-1.5 py-0.5 align-middle text-[9px] font-bold uppercase tracking-wide text-white">
+                You
+              </span>
+            )}
+          </p>
+          <p className="mt-0.5">
+            <span
+              className={cn(
+                "inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                league.className
+              )}
+            >
+              {league.name}
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div className="shrink-0 text-right">
+        <p className="font-serif text-base font-bold tabular-nums leading-none text-peacock">
+          {row.daysCompleted}
+        </p>
+        <p className="mt-0.5 text-[10px] text-[var(--text-muted)]">
+          / {totalDays} days
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function topRankPodiumRows(rows: LeaderboardRow[]): LeaderboardRow[] {
+  return rows.filter((r) => r.rank >= 1 && r.rank <= 3);
+}
+
+/**
+ * Desktop podium: one column per rank (2 | 1 | 3).
+ * Multiple ties stack inside that column so positions stay fixed.
+ */
+function DesktopPodium({
+  rank1,
+  rank2,
+  rank3,
+  totalDays,
+}: {
+  rank1: LeaderboardRow[];
+  rank2: LeaderboardRow[];
+  rank3: LeaderboardRow[];
+  totalDays: number;
+}) {
+  const columns: { rank: number; rows: LeaderboardRow[]; order: string }[] = [
+    { rank: 2, rows: rank2, order: "order-1" },
+    { rank: 1, rows: rank1, order: "order-2" },
+    { rank: 3, rows: rank3, order: "order-3" },
+  ];
+
+  return (
+    <div className="hidden grid-cols-3 items-end gap-2 px-3 pb-0 pt-2 sm:grid sm:gap-4 sm:px-5">
+      {columns.map(({ rank, rows, order }) => (
+        <div
+          key={rank}
+          className={cn(
+            "flex min-w-0 flex-col items-center justify-end gap-3",
+            order
+          )}
+        >
+          {rows.length === 0 ? (
+            <div className="w-full opacity-0" aria-hidden>
+              <div className="h-14" />
+            </div>
+          ) : (
+            rows.map((row) => (
+              <PodiumCard
+                key={row.participantId}
+                row={row}
+                totalDays={totalDays}
+              />
+            ))
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChallengeLeaderboard({
+  challenge,
+  user,
+  nowMs,
+}: {
+  challenge: SavedChallenge;
+  user: LocalUserProfile | null;
+  nowMs: number;
+}) {
+  const rows = useMemo(
+    () => getChallengeLeaderboardRows(challenge, user, nowMs),
+    [challenge, user, nowMs]
+  );
+  const podiumRows = useMemo(() => topRankPodiumRows(rows), [rows]);
+  const rank1 = podiumRows.filter((r) => r.rank === 1);
+  const rank2 = podiumRows.filter((r) => r.rank === 2);
+  const rank3 = podiumRows.filter((r) => r.rank === 3);
+  const myRow = rows.find((r) => r.isYou) ?? null;
+  const mine = findMyParticipant(challenge, user);
+  const isCreator =
+    user &&
+    challenge.createdBy.trim().toLowerCase() ===
+      user.fullName.trim().toLowerCase();
+
+  return (
+    <GlassCard
+      strong
+      padding="p-0"
+      lift={false}
+      className="w-full max-w-full overflow-hidden"
+    >
+      {/* Header — stacked on mobile so nothing floats off-screen */}
+      <div className="border-b border-gold/30 px-3 py-3.5 sm:px-5 sm:py-4">
+        <div className="flex items-start gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold to-saffron shadow-md sm:h-10 sm:w-10">
+            <Trophy className="h-4 w-4 text-krishna" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="break-words font-serif text-base font-bold leading-snug text-krishna sm:text-xl">
+              {challenge.type === "shloka" ? "📜 " : "🎨 "}
+              {challenge.name}
+            </h2>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)] sm:text-xs">
+              {challenge.days} days · by {challenge.createdBy}
+              {challenge.createdAt
+                ? ` · ${formatChallengeDate(challenge.createdAt)}`
+                : ""}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full bg-peacock/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-peacock">
+                <Globe className="h-3 w-3" />
+                Public
+              </span>
+              {isCreator && (
+                <span className="rounded-full bg-krishna/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-krishna">
+                  Created by you
+                </span>
+              )}
+              {mine && !isCreator && (
+                <span className="rounded-full bg-tulasi/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-tulasi">
+                  Joined
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 rounded-full bg-cream px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)]">
+                <Users className="h-3 w-3" />
+                {rows.length} devotee{rows.length === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+        </div>
+        <Link
+          href={challengePath(challenge.id)}
+          className="mt-3 flex w-full items-center justify-center gap-1 rounded-xl border border-peacock/25 bg-peacock/5 py-2.5 text-xs font-semibold text-peacock transition active:bg-peacock/10 sm:mt-3 sm:w-auto sm:justify-start sm:border-0 sm:bg-transparent sm:py-0 sm:text-sm sm:hover:underline"
+        >
+          Open challenge
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+          No devotees have joined this challenge yet.
+        </p>
+      ) : (
+        <>
+          {/* Top devotees */}
+          {podiumRows.length > 0 && (
+            <div className="border-b border-gold/20 bg-gradient-to-b from-cream/80 to-white">
+              <p className="px-3 pt-4 text-center text-[10px] font-semibold uppercase tracking-widest text-peacock sm:px-4">
+                Top devotees
+              </p>
+              <p className="mb-2 px-3 text-center text-[10px] text-[var(--text-muted)] sm:mb-1 sm:px-4">
+                Same days completed = same rank
+              </p>
+
+              {/* Mobile: compact 3-column podium */}
+              <MobilePodium
+                rank1={rank1}
+                rank2={rank2}
+                rank3={rank3}
+                totalDays={challenge.days}
+              />
+
+              {/* Desktop: fixed 3-column podium */}
+              <DesktopPodium
+                rank1={rank1}
+                rank2={rank2}
+                rank3={rank3}
+                totalDays={challenge.days}
+              />
+            </div>
+          )}
+
+          {/* Full rankings — same grid layout on all breakpoints */}
+          <div>
+            <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_auto] gap-2 border-b border-gold/25 bg-cream/60 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-krishna sm:px-4 sm:text-xs">
+              <span className="text-center">Rank</span>
+              <span>Name</span>
+              <span className="text-right">Days</span>
+            </div>
+            <div className="divide-y divide-gold/15">
+              {rows.map((row) => (
+                <RankListItem
+                  key={row.participantId}
+                  row={row}
+                  totalDays={challenge.days}
+                />
+              ))}
+            </div>
+          </div>
+
+          {myRow && myRow.rank > 3 && (
+            <div className="border-t border-gold/30 bg-gold/10">
+              <p className="px-3 pt-2 text-center text-[10px] font-semibold uppercase tracking-wide text-peacock sm:px-4">
+                Your standing
+              </p>
+              <RankListItem row={myRow} totalDays={challenge.days} />
+            </div>
+          )}
+        </>
+      )}
+    </GlassCard>
+  );
+}
+
+export default function LeaderboardPage() {
+  const [user, setUser] = useState<LocalUserProfile | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+  const [challenges, setChallenges] = useState<SavedChallenge[]>([]);
+  const [ready, setReady] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const guest = isGuestUser();
+    setIsGuest(guest);
+    const profile = guest ? null : getLoggedInUserProfile();
+    setUser(profile);
+
+    const list = loadChallengesWithDemo();
+    saveChallenges(list);
+    setChallenges(list);
+    setReady(true);
+
+    if (!guest) {
+      fetch("/api/auth/me")
+        .then((r) => (r.ok ? r.json() : null))
+        .then(
+          (
+            data: {
+              user?: LocalUserProfile & { fullName?: string };
+            } | null
+          ) => {
+            if (data?.user?.fullName) {
+              const next: LocalUserProfile = {
+                id: data.user.id,
+                fullName: data.user.fullName,
+                email: data.user.email,
+              };
+              setUser(next);
+              try {
+                localStorage.setItem("bhakti-user", JSON.stringify(data.user));
+              } catch {
+                /* ignore */
+              }
+            }
+          }
+        )
+        .catch(() => {
+          /* offline */
+        });
+    }
+  }, []);
+
+  const myPublic = useMemo(
+    () => getMyPublicChallenges(challenges, user),
+    [challenges, user]
+  );
+
+  useEffect(() => {
+    if (myPublic.length === 0) {
+      setActiveId(null);
+      return;
+    }
+    setActiveId((prev) =>
+      prev && myPublic.some((c) => c.id === prev) ? prev : myPublic[0].id
+    );
+  }, [myPublic]);
+
+  const active = myPublic.find((c) => c.id === activeId) ?? myPublic[0] ?? null;
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--text-muted)]">
+        Loading leaderboard…
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-full overflow-x-hidden">
       <PageHeader
-        title="Leaderboards"
-        subtitle="Start a challenge to earn Lotus Points and rise in the ranks."
+        title="Leaderboard"
+        subtitle="Public challenges you created or joined — ranked by days completed."
         emoji="🏆"
       />
 
-      <GlassCard gold lift={false} className="mb-6 overflow-hidden text-center sm:mb-8">
-        <div className="relative mx-auto flex max-w-md flex-col items-center py-2">
-          <motion.div
-            className="relative"
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <span className="text-6xl">🏆</span>
-          </motion.div>
-          <p className="relative mt-3 font-serif text-xl font-bold text-krishna md:text-2xl">
-            Lotus Points Glory
+      {isGuest || !user ? (
+        <GlassCard strong padding="p-5 sm:p-6" lift={false} className="text-center">
+          <LogIn className="mx-auto h-10 w-10 text-peacock" />
+          <h2 className="mt-3 font-serif text-lg font-bold text-krishna">
+            Log in to see your leaderboards
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Rankings appear for public challenges you create or join.
           </p>
-          <p className="relative mt-1 flex items-center gap-1 text-sm text-peacock">
-            <Sparkles className="h-3.5 w-3.5" />
-            {tabLabel} · Your score starts at 0
-          </p>
-        </div>
-      </GlassCard>
-
-      <div
-        className="mb-6 flex flex-wrap gap-2"
-        role="tablist"
-        aria-label="Leaderboard scope"
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "min-h-10 rounded-full px-4 py-2 text-sm font-medium transition",
-              tab === t.id
-                ? "bg-gradient-to-r from-krishna to-peacock text-white shadow-md"
-                : "border border-gold/40 bg-white text-[var(--text-muted)]"
-            )}
+          <Link
+            href="/please-login?reason=leaderboard&next=/leaderboard"
+            className="mt-5 inline-block w-full sm:w-auto"
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <GlassCard strong padding="p-0" lift={false}>
-        <div className="flex items-center gap-2 border-b border-gold/30 px-4 py-4 sm:px-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-saffron shadow-md">
-            <Trophy className="h-4 w-4 text-krishna" />
-          </span>
-          <div>
-            <h2 className="font-serif text-lg font-bold text-krishna">
-              {tabLabel} Rankings
-            </h2>
-            <p className="text-xs text-[var(--text-muted)]">
-              Fresh start · 0 Lotus Points
-            </p>
+            <Button variant="primary" fullWidth className="sm:w-auto">
+              <LogIn className="h-4 w-4" />
+              Login
+            </Button>
+          </Link>
+        </GlassCard>
+      ) : myPublic.length === 0 ? (
+        <GlassCard strong padding="p-5 sm:p-6" lift={false} className="text-center">
+          <Trophy className="mx-auto h-10 w-10 text-gold" />
+          <h2 className="mt-3 font-serif text-lg font-bold text-krishna">
+            No public challenges yet
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+            Create a public challenge or join one — then devotee ranks will show
+            here.
+          </p>
+          <div className="mt-5 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
+            <Link href="/challenges" className="w-full sm:w-auto">
+              <Button variant="gold" fullWidth className="sm:w-auto">
+                Browse challenges
+              </Button>
+            </Link>
+            <Link href="/challenges/custom" className="w-full sm:w-auto">
+              <Button variant="primary" fullWidth className="sm:w-auto">
+                Create public challenge
+              </Button>
+            </Link>
           </div>
-        </div>
-        <ul>
-          {rows.map((u) => (
-            <li
-              key={u.rank}
-              className={cn(
-                "flex items-center gap-4 border-b border-gold/15 px-4 py-3.5 last:border-0 sm:px-5",
-                u.isYou && "bg-gold/15"
-              )}
+        </GlassCard>
+      ) : (
+        <div className="w-full space-y-4 sm:space-y-5">
+          {/* Challenge selector — snap-scroll chips */}
+          <div className="w-full">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+              Your public challenges
+            </p>
+            <div
+              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="tablist"
+              aria-label="Public challenges"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream text-sm font-bold text-[var(--text-muted)]">
-                {u.rank}
-              </span>
-              <span className="text-2xl">{u.avatar}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-krishna">
-                  {u.name}
-                  {u.isYou && (
-                    <span className="ml-2 text-xs text-peacock">(You)</span>
-                  )}
-                </p>
-                <p className="truncate text-xs text-[var(--text-muted)]">{u.temple}</p>
-              </div>
-              <div className="text-right">
-                <span className="font-serif font-bold text-peacock">
-                  {formatNumber(u.points)}
-                </span>
-                <p className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
-                  Lotus Pts
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </GlassCard>
+              {myPublic.map((c) => {
+                const selected = c.id === active?.id;
+                const count = getChallengeLeaderboardRows(c, user, nowMs).length;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setActiveId(c.id)}
+                    className={cn(
+                      "w-[min(11rem,70vw)] shrink-0 snap-start rounded-xl border px-3 py-2.5 text-left transition",
+                      selected
+                        ? "border-krishna/50 bg-gradient-to-r from-krishna to-peacock text-white shadow-md"
+                        : "border-gold/40 bg-white text-[var(--text-muted)] active:border-krishna/30"
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "truncate text-xs font-semibold sm:text-sm",
+                        selected ? "text-white" : "text-krishna"
+                      )}
+                    >
+                      {c.name}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-0.5 flex items-center gap-1 text-[10px] font-medium",
+                        selected ? "text-white/80" : "text-[var(--text-muted)]"
+                      )}
+                    >
+                      <Users className="h-3 w-3 shrink-0" />
+                      {count} · {c.days}d
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      <GlassCard className="mt-4 text-center" padding="p-4" lift={false}>
-        <p className="text-sm text-[var(--text-muted)]">
-          Complete challenges and sadhana to climb the leaderboard.
-        </p>
-        <Link href="/challenges" className="mt-3 inline-block">
-          <Button variant="gold" size="sm">
-            Start a Challenge
-          </Button>
-        </Link>
-      </GlassCard>
+          {active && (
+            <ChallengeLeaderboard
+              challenge={active}
+              user={user}
+              nowMs={nowMs}
+            />
+          )}
+
+          <p className="px-1 text-center text-[10px] leading-relaxed text-[var(--text-muted)] sm:text-xs">
+            Leagues: Bronze → Silver → Gold → Crystal → Master → Champion →
+            Legend
+          </p>
+        </div>
+      )}
     </div>
   );
 }

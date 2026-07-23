@@ -197,14 +197,6 @@ export default function ChallengesPage() {
               <p className="mt-2 text-xs font-medium text-peacock">
                 Badge: {c.badge}
               </p>
-              <ul className="mt-4 flex-1 space-y-1.5 text-sm text-[var(--text-primary)]">
-                {c.tasks.map((t) => (
-                  <li key={t} className="flex items-start gap-2">
-                    <span className="mt-0.5 text-tulasi">✓</span>
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
               <Link href={`/challenges/${c.id}`} className="mt-5 block">
                 <Button
                   variant={isShloka ? "gold" : "primary"}

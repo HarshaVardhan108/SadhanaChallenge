@@ -23,12 +23,19 @@ import {
 } from "lucide-react";
 import { OfferingToast } from "@/components/ambient/OfferingToast";
 import {
+  InviteDevoteesPicker,
+  type InviteableUser,
+} from "@/components/challenges/InviteDevoteesPicker";
+import {
   buildParticipants,
   getCreatorNameFromStorage,
   getLoggedInUserProfile,
+  getShlokaVisibilityConstraint,
+  loadChallengesWithDemo,
   newChallengeId,
   prependChallenge,
   challengePath,
+  type ChallengeVisibility,
   type SavedChallenge,
 } from "@/lib/challenges";
 
@@ -48,10 +55,15 @@ export default function ShlokaChallengePage() {
   const [selectedShlokaIds, setSelectedShlokaIds] = useState<string[]>([]);
   const [days, setDays] = useState(7);
   const [customDays, setCustomDays] = useState("");
-  const [invites, setInvites] = useState("");
+  const [selectedInvitees, setSelectedInvitees] = useState<InviteableUser[]>(
+    []
+  );
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
+  const [visibilityLock, setVisibilityLock] = useState(() =>
+    getShlokaVisibilityConstraint([], null)
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +91,24 @@ export default function ShlokaChallengePage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Block public/private create until any active one of that type finishes
+  useEffect(() => {
+    const profile = getLoggedInUserProfile();
+    const list = loadChallengesWithDemo();
+    const lock = getShlokaVisibilityConstraint(list, profile);
+    setVisibilityLock(lock);
+    if (lock.forced) {
+      setVisibility(lock.forced);
+      if (lock.forced === "private") setSelectedInvitees([]);
+    } else if (!lock.allowPublic && visibility === "public" && lock.allowPrivate) {
+      setVisibility("private");
+      setSelectedInvitees([]);
+    } else if (!lock.allowPrivate && visibility === "private" && lock.allowPublic) {
+      setVisibility("public");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   const book = useMemo(() => getBookFromList(books, bookId), [books, bookId]);
@@ -121,16 +151,45 @@ export default function ShlokaChallengePage() {
       setError("Please select at least one shloka.");
       return;
     }
+
+    const profile = getLoggedInUserProfile();
+    const list = loadChallengesWithDemo();
+    const lock = getShlokaVisibilityConstraint(list, profile);
+    const finalVisibility: ChallengeVisibility = lock.forced ?? visibility;
+
+    if (finalVisibility === "public" && !lock.allowPublic) {
+      setError(
+        lock.message ||
+          "Finish your active public shloka challenge before creating another public one."
+      );
+      return;
+    }
+    if (finalVisibility === "private" && !lock.allowPrivate) {
+      setError(
+        lock.message ||
+          "Finish your active private shloka challenge before creating another private one."
+      );
+      return;
+    }
+    if (!lock.allowPublic && !lock.allowPrivate) {
+      setError(
+        lock.message ||
+          "Finish your active shloka challenges before creating a new one."
+      );
+      return;
+    }
+
     try {
-      const inviteList =
-        visibility === "public"
-          ? invites
-              .split(/[,;\n]/)
-              .map((s) => s.trim())
-              .filter(Boolean)
+      const inviteInputs =
+        finalVisibility === "public"
+          ? selectedInvitees.map((u) => ({
+              name: u.fullName,
+              userId: u.id,
+              email: u.email,
+            }))
           : [];
+      const inviteLabels = inviteInputs.map((i) => i.email || i.name);
       const creatorName = getCreatorNameFromStorage();
-      const profile = getLoggedInUserProfile();
       const payload: SavedChallenge = {
         id: newChallengeId(),
         type: "shloka",
@@ -141,13 +200,13 @@ export default function ShlokaChallengePage() {
         shlokaIds: selectedShlokaIds,
         shlokas: selectedShlokas.map((s) => s.label),
         days: durationDays,
-        invites: inviteList,
-        visibility,
+        invites: inviteLabels,
+        visibility: finalVisibility,
         createdAt: new Date().toISOString(),
         createdBy: creatorName,
         participants: buildParticipants(
           creatorName,
-          inviteList,
+          inviteInputs,
           durationDays,
           profile?.id
         ),
@@ -282,12 +341,6 @@ export default function ShlokaChallengePage() {
               </div>
             )}
           </div>
-
-          {error && (
-            <p className="text-sm font-medium text-rose-600" role="alert">
-              {error}
-            </p>
-          )}
         </GlassCard>
 
         <GlassCard strong>
@@ -342,37 +395,71 @@ export default function ShlokaChallengePage() {
             </h2>
           </div>
           <div className="flex gap-3">
-            {(["public", "private"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => {
-                  setVisibility(v);
-                  if (v === "private") setInvites("");
-                }}
-                className={cn(
-                  "min-h-11 flex-1 rounded-xl border py-2.5 capitalize",
-                  visibility === v
-                    ? "border-peacock bg-peacock/10 text-peacock"
-                    : "border-gold/40 bg-white"
-                )}
-              >
-                {v}
-              </button>
-            ))}
+            {(["public", "private"] as const).map((v) => {
+              const allowed =
+                v === "public"
+                  ? visibilityLock.allowPublic
+                  : visibilityLock.allowPrivate;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  disabled={!allowed}
+                  onClick={() => {
+                    if (!allowed) return;
+                    setVisibility(v);
+                    if (v === "private") setSelectedInvitees([]);
+                    setError("");
+                  }}
+                  className={cn(
+                    "min-h-11 flex-1 rounded-xl border py-2.5 capitalize transition",
+                    !allowed && "cursor-not-allowed opacity-40",
+                    visibility === v && allowed
+                      ? "border-peacock bg-peacock/10 text-peacock"
+                      : allowed
+                        ? "border-gold/40 bg-white"
+                        : "border-gold/20 bg-cream/50 text-[var(--text-muted)]"
+                  )}
+                >
+                  {v}
+                  {!allowed ? " · locked" : ""}
+                </button>
+              );
+            })}
           </div>
 
-          {visibility === "public" && (
-            <div className="mt-4">
-              <Input
-                label="Invite Devotees (emails or names, comma-separated)"
-                placeholder="friend@example.com, Temple Group..."
-                value={invites}
-                onChange={(e) => setInvites(e.target.value)}
-              />
+          {visibilityLock.message && (
+            <div
+              className="mt-3 space-y-2 rounded-xl border border-gold/30 bg-cream/70 px-3 py-2 text-xs leading-relaxed text-[var(--text-muted)] sm:text-sm"
+              role="status"
+            >
+              <p>{visibilityLock.message}</p>
+              {visibilityLock.blockingPublic && (
+                <a
+                  href={challengePath(visibilityLock.blockingPublic.id)}
+                  className="block font-semibold text-peacock hover:underline"
+                >
+                  Open public challenge →
+                </a>
+              )}
+              {visibilityLock.blockingPrivate && (
+                <a
+                  href={challengePath(visibilityLock.blockingPrivate.id)}
+                  className="block font-semibold text-peacock hover:underline"
+                >
+                  Open private challenge →
+                </a>
+              )}
             </div>
           )}
-          {visibility === "private" && (
+
+          {visibility === "public" && visibilityLock.allowPublic && (
+            <InviteDevoteesPicker
+              selected={selectedInvitees}
+              onChange={setSelectedInvitees}
+            />
+          )}
+          {visibility === "private" && visibilityLock.allowPrivate && (
             <p className="mt-3 text-sm text-[var(--text-muted)]">
               Private challenge — only you can access it. No invites.
             </p>
@@ -408,6 +495,14 @@ export default function ShlokaChallengePage() {
                 <li>
                   <strong>Visibility:</strong> {visibility}
                 </li>
+                {visibility === "public" && (
+                  <li>
+                    <strong>Invites:</strong>{" "}
+                    {selectedInvitees.length
+                      ? selectedInvitees.map((u) => u.fullName).join(", ")
+                      : "None yet"}
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -417,9 +512,15 @@ export default function ShlokaChallengePage() {
             fullWidth
             size="lg"
             className="mt-5"
+            disabled={!visibilityLock.allowPublic && !visibilityLock.allowPrivate}
           >
             ✨ Create Shloka Challenge
           </Button>
+          {error && (
+            <p className="mt-3 text-center text-sm font-medium text-rose-600" role="alert">
+              {error}
+            </p>
+          )}
         </GlassCard>
       </form>
 
