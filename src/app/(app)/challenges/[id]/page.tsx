@@ -287,24 +287,7 @@ export default function ChallengeDetailPage() {
             </span>
           </div>
           <ProgressBar value={prog.pct} showLabel={false} height="h-2.5" />
-          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
-            Each day has a <strong className="font-semibold text-krishna">24-hour window</strong>.
-            Missed days show a red ✕ and are{" "}
-            <strong className="font-semibold text-red-600">not counted</strong>.
-          </p>
         </div>
-
-        {isPublic && (
-          <p className="mt-3 rounded-xl border border-peacock/20 bg-peacock/5 px-3 py-2 text-xs leading-relaxed text-peacock">
-            {isGuest
-              ? "Browsing as guest — log in to join and track your own days."
-              : user
-                ? mine
-                  ? `Signed in as ${user.fullName}. Your name is at the top — update only your own days.`
-                  : `Signed in as ${user.fullName}. Join to track your days. Others stay view-only.`
-                : "Log in to join and track your own days."}
-          </p>
-        )}
 
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           {isGuest ? (

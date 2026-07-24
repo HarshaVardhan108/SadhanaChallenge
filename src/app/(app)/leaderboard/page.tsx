@@ -29,23 +29,22 @@ import {
   Users,
 } from "lucide-react";
 
-/** Soft league labels from days completed vs challenge length. */
+/**
+ * Pandava league labels from days completed vs challenge length.
+ * Sequence (highest → lowest): Yuddhistir → Bhima → Arjuna → Nakul → Sahadev
+ */
 function leagueForDays(daysCompleted: number, totalDays: number) {
   const pct =
     totalDays <= 0 ? 0 : Math.round((daysCompleted / totalDays) * 100);
-  if (pct >= 95)
-    return { name: "Legend", className: "bg-lavender text-indigo" };
   if (pct >= 80)
-    return { name: "Champion", className: "bg-lotus/40 text-krishna" };
-  if (pct >= 65)
-    return { name: "Master", className: "bg-peacock/10 text-peacock" };
-  if (pct >= 50)
-    return { name: "Crystal", className: "bg-sky/40 text-peacock" };
-  if (pct >= 35)
-    return { name: "Gold", className: "bg-gold/40 text-krishna" };
+    return { name: "Yuddhistir", className: "bg-gold/40 text-krishna" };
+  if (pct >= 60)
+    return { name: "Bhima", className: "bg-krishna/15 text-krishna" };
+  if (pct >= 40)
+    return { name: "Arjuna", className: "bg-lotus/50 text-krishna" };
   if (pct >= 20)
-    return { name: "Silver", className: "bg-cream text-[var(--text-muted)]" };
-  return { name: "Bronze", className: "bg-saffron/25 text-sandal" };
+    return { name: "Nakul", className: "bg-sky/40 text-peacock" };
+  return { name: "Sahadev", className: "bg-cream text-[var(--text-muted)]" };
 }
 
 function initials(name: string): string {
@@ -56,9 +55,9 @@ function initials(name: string): string {
 }
 
 function avatarTone(rank: number): string {
-  if (rank === 1) return "from-gold to-saffron";
-  if (rank === 2) return "from-sky to-peacock";
-  if (rank === 3) return "from-saffron to-lotus";
+  if (rank === 1) return "from-gold to-[#ffe082]"; // Golden
+  if (rank === 2) return "from-krishna to-peacock"; // Blue
+  if (rank === 3) return "from-lotus to-[#ffd6dc]"; // Light pink
   return "from-krishna to-peacock";
 }
 
@@ -91,12 +90,13 @@ function PodiumCard({
   const heights = compact
     ? { 1: "h-14", 2: "h-10", 3: "h-8" }
     : { 1: "h-24", 2: "h-16", 3: "h-14" };
+  // Podium steps: 1st golden, 2nd blue, 3rd light pink
   const plinth =
     tier === 1
-      ? "from-gold/80 to-saffron/70"
+      ? "from-gold via-[#ffe082] to-gold/70"
       : tier === 2
-        ? "from-sky/70 to-peacock/30"
-        : "from-saffron/50 to-lotus/40";
+        ? "from-krishna/80 via-peacock/60 to-sky/50"
+        : "from-lotus via-[#ffd6dc] to-lotus/50";
   const avatar = compact
     ? "h-11 w-11 text-[11px]"
     : "h-14 w-14 text-sm";
@@ -211,13 +211,26 @@ function MobilePodium({
                 className="flex w-full flex-col items-center opacity-35"
                 aria-hidden
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed border-gold/50 bg-cream text-xs text-[var(--text-muted)]">
+                <div
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-full border-2 border-dashed bg-cream text-xs text-[var(--text-muted)]",
+                    rank === 1
+                      ? "border-gold/60"
+                      : rank === 2
+                        ? "border-krishna/40"
+                        : "border-lotus/70"
+                  )}
+                >
                   —
                 </div>
                 <div
                   className={cn(
-                    "mt-1.5 w-full rounded-t-lg bg-gradient-to-b from-gold/20 to-cream",
-                    rank === 1 ? "h-14" : rank === 2 ? "h-10" : "h-8"
+                    "mt-1.5 w-full rounded-t-lg bg-gradient-to-b to-cream",
+                    rank === 1
+                      ? "h-14 from-gold/30"
+                      : rank === 2
+                        ? "h-10 from-krishna/20"
+                        : "h-8 from-lotus/30"
                   )}
                 />
               </div>
@@ -267,9 +280,13 @@ function RankListItem({
         <span
           className={cn(
             "inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
-            row.rank <= 3
-              ? "bg-gradient-to-br from-gold/50 to-saffron/40 text-krishna"
-              : "bg-cream text-[var(--text-muted)]"
+            row.rank === 1
+              ? "bg-gradient-to-br from-gold/70 to-[#ffe082]/50 text-krishna"
+              : row.rank === 2
+                ? "bg-gradient-to-br from-krishna/30 to-peacock/25 text-krishna"
+                : row.rank === 3
+                  ? "bg-gradient-to-br from-lotus/80 to-[#ffd6dc]/60 text-krishna"
+                  : "bg-cream text-[var(--text-muted)]"
           )}
           title={`Rank ${row.rank}`}
         >
@@ -709,8 +726,7 @@ export default function LeaderboardPage() {
           )}
 
           <p className="px-1 text-center text-[10px] leading-relaxed text-[var(--text-muted)] sm:text-xs">
-            Leagues: Bronze → Silver → Gold → Crystal → Master → Champion →
-            Legend
+            Leagues: Sahadev → Nakul → Arjuna → Bhima → Yuddhistir
           </p>
         </div>
       )}

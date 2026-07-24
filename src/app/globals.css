@@ -78,17 +78,17 @@ h4,
   font-family: var(--font-baskerville), Georgia, serif;
 }
 
-/* Intro splash — soft lotus petals over Vrindavan background */
+/* Intro splash — soft petals over deity hero */
 @keyframes intro-petal-fall {
   0% {
-    transform: translateY(-10vh) rotate(0deg);
+    transform: translateY(-8vh) rotate(0deg);
     opacity: 0;
   }
   12% {
-    opacity: 0.8;
+    opacity: 0.85;
   }
   100% {
-    transform: translateY(110vh) rotate(360deg);
+    transform: translateY(70vh) rotate(320deg);
     opacity: 0;
   }
 }
@@ -100,10 +100,9 @@ h4,
 }
 
 /*
- * Intro must cover login on first paint (before JS hydrates).
- * Solid fill so login never peeks through while images load.
- * data-intro-done is set by a blocking script when already played this session.
- * Animations are pure CSS so SSR HTML attributes match the client (no framer-motion).
+ * Pandharpur-style intro:
+ * - Covers login until user taps BEGIN JOURNEY
+ * - data-intro-done hides splash before paint on return visits
  */
 .bhakti-intro-splash,
 #bhakti-intro-splash {
@@ -111,14 +110,16 @@ h4,
   inset: 0;
   z-index: 9999;
   overflow: hidden;
-  background: #0f193c;
+  background: #fff9f6;
   opacity: 1;
-  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .bhakti-intro-splash--exit {
   opacity: 0;
   pointer-events: none;
+  transform: translateY(-2%);
 }
 
 html[data-intro-done="1"] .bhakti-intro-splash,
@@ -128,102 +129,71 @@ html[data-intro-done="1"] #bhakti-intro-splash {
   visibility: hidden !important;
 }
 
-@keyframes bhakti-intro-zoom {
-  from {
-    transform: scale(1.08);
+/* Smooth crossfade + gentle Ken Burns on active slide */
+.bhakti-intro-slide {
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 1.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 5.5s ease-out;
+  will-change: opacity, transform;
+  /* Default: keep faces (upper body) in frame */
+  object-position: center 18%;
+}
+
+.bhakti-intro-slide--active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 1;
+}
+
+/* Desktop Vrindavan bg: gentle zoom, full scene centered */
+@media (min-width: 640px) {
+  .bhakti-intro-slide--desktop {
+    object-position: center center;
+    transform: scale(1.03);
   }
-  to {
+
+  .bhakti-intro-slide--desktop.bhakti-intro-slide--active {
     transform: scale(1);
   }
 }
 
-.bhakti-intro-zoom {
-  animation: bhakti-intro-zoom 5s ease-out forwards;
-}
-
-@keyframes bhakti-intro-glow {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.6);
-  }
-  45% {
-    opacity: 0.75;
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  100% {
-    opacity: 0.45;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-.bhakti-intro-glow {
-  background: radial-gradient(
-    circle,
-    rgba(255, 213, 79, 0.35) 0%,
-    rgba(255, 183, 71, 0.12) 40%,
-    transparent 70%
-  );
-  filter: blur(10px);
-  animation: bhakti-intro-glow 2.2s ease-out forwards;
-}
-
-@keyframes bhakti-intro-lotus {
+@keyframes bhakti-intro-panel-in {
   from {
     opacity: 0;
-    transform: scale(2.2) translateY(20px);
+    transform: translateY(28px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
-.bhakti-intro-lotus {
-  animation: bhakti-intro-lotus 1.15s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+.bhakti-intro-panel {
+  animation: bhakti-intro-panel-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  box-shadow: 0 -8px 40px rgba(61, 41, 20, 0.06);
 }
 
 @keyframes bhakti-intro-title {
-  0% {
+  from {
     opacity: 0;
-    transform: scale(3.2);
-    filter: blur(12px);
+    transform: translateY(14px);
   }
-  72% {
+  to {
     opacity: 1;
-    transform: scale(0.94);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    filter: blur(0);
+    transform: translateY(0);
   }
 }
 
 .bhakti-intro-title {
-  animation: bhakti-intro-title 1.65s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
-}
-
-@keyframes bhakti-intro-line {
-  from {
-    width: 0;
-    opacity: 0;
-  }
-  to {
-    width: min(280px, 55vw);
-    opacity: 1;
-  }
-}
-
-.bhakti-intro-line {
-  width: 0;
-  animation: bhakti-intro-line 0.85s ease-out 1.55s both;
+  animation: bhakti-intro-title 0.7s ease-out 0.35s both;
 }
 
 @keyframes bhakti-intro-sub {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -232,7 +202,29 @@ html[data-intro-done="1"] #bhakti-intro-splash {
 }
 
 .bhakti-intro-sub {
-  animation: bhakti-intro-sub 0.9s ease-out 1.9s both;
+  animation: bhakti-intro-sub 0.7s ease-out 0.5s both;
+}
+
+@keyframes bhakti-intro-cta {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.bhakti-intro-cta {
+  animation: bhakti-intro-cta 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+}
+
+/* Tall phones: keep upper deities in view */
+@media (max-aspect-ratio: 9/16) {
+  .bhakti-intro-slide {
+    object-position: center 16%;
+  }
 }
 
 .font-sanskrit {

@@ -89,8 +89,6 @@ npm run start
 | `/community` | Haribol / Jai Prabhupada |
 | `/achievements` | Collectible badges |
 | `/invite` | Link, QR, WhatsApp… |
-| `/festivals` | Countdowns + special challenges |
-| `/temple-map` | Locator |
 | `/analytics` | Charts + heatmap |
 | `/notifications` | Mangala → quotes |
 | `/profile` · `/settings` · `/admin` | Account & CMS |

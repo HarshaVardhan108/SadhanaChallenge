@@ -6,7 +6,6 @@ export const navItems = [
   { href: "/community", label: "Community", icon: "Users" },
   { href: "/achievements", label: "Achievements", icon: "Award" },
   { href: "/invite", label: "Invite", icon: "UserPlus" },
-  { href: "/temple-map", label: "Temple Map", icon: "MapPin" },
   { href: "/profile", label: "Profile", icon: "User" },
   { href: "/settings", label: "Settings", icon: "Settings" },
 ] as const;
@@ -200,50 +199,17 @@ export const leaderboard = [
   { rank: 1, name: "Harsha (You)", temple: "ISKCON Bangalore", points: 0, avatar: "🙏", isYou: true },
 ];
 
-export const communityPosts = [
-  {
-    id: 1,
-    author: "Radha Priya Dasi",
-    avatar: "🌸",
-    time: "2h ago",
-    type: "realization",
-    content:
-      "Today after 16 rounds, I felt such peace. Krishna's holy names are truly the medicine for the soul. Haribol! 🙏",
-    reactions: { haribol: 42, jaiPrabhupada: 18 },
-    comments: 7,
-  },
-  {
-    id: 2,
-    author: "Govinda Das",
-    avatar: "🪷",
-    time: "5h ago",
-    type: "seva",
-    content:
-      "Completed kitchen seva at the temple this morning. Serving prasadam to 200 devotees — pure bliss!",
-    reactions: { haribol: 65, jaiPrabhupada: 31 },
-    comments: 12,
-  },
-  {
-    id: 3,
-    author: "Tulasi Devi",
-    avatar: "🌿",
-    time: "Yesterday",
-    type: "festival",
-    content:
-      "Preparing for Gaura Purnima celebrations. Who else is joining the 24-hour kirtan? 🎉",
-    reactions: { haribol: 98, jaiPrabhupada: 44 },
-    comments: 23,
-  },
-];
-
-export const festivals = [
-  { name: "Janmashtami", date: "2026-08-14", daysLeft: 36, emoji: "🎉" },
-  { name: "Gaura Purnima", date: "2026-03-03", daysLeft: -128, emoji: "🌕" },
-  { name: "Ratha Yatra", date: "2026-07-16", daysLeft: 7, emoji: "🛕" },
-  { name: "Nityananda Trayodashi", date: "2026-02-09", daysLeft: -150, emoji: "💙" },
-  { name: "Narasimha Chaturdashi", date: "2026-05-01", daysLeft: -69, emoji: "🦁" },
-  { name: "Next Ekadashi", date: "2026-07-17", daysLeft: 8, emoji: "📿" },
-];
+/** Community feed starts empty — posts are user-created in the UI. */
+export const communityPosts: {
+  id: number;
+  author: string;
+  avatar: string;
+  time: string;
+  type: string;
+  content: string;
+  reactions: { haribol: number; jaiPrabhupada: number };
+  comments: number;
+}[] = [];
 
 export const temples = [
   { name: "ISKCON Bangalore", city: "Bangalore", country: "India", distance: "2.4 km", programs: "Mangala Arati 4:30 AM · Sunday Feast 12:30 PM" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -23,6 +23,10 @@ import type {
   CatalogChapter,
   CatalogShloka,
 } from "@/lib/shloka-catalog";
+import {
+  useShlokaAudio,
+  type ShlokaTrack,
+} from "@/components/shlokas/ShlokaAudioProvider";
 import { cn } from "@/lib/utils";
 
 const COMPLETED_KEY = "bhakti-shlokas-completed";
@@ -92,6 +96,23 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function toTrack(
+  s: CatalogShloka,
+  bookName?: string
+): ShlokaTrack | null {
+  if (!s.audioUrl) return null;
+  return {
+    id: s.id,
+    label: s.label,
+    audioUrl: s.audioUrl,
+    chapter: s.chapter,
+    verseNumber: s.verseNumber,
+    bookName,
+    transliteration: s.transliteration,
+    sanskrit: s.sanskrit,
+  };
+}
+
 export default function ShlokasPage() {
   const [books, setBooks] = useState<CatalogBook[]>([]);
   const [allSlokas, setAllSlokas] = useState<ShlokaRow[]>([]);
@@ -103,13 +124,23 @@ export default function ShlokasPage() {
   const [index, setIndex] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(true);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [loop, setLoop] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [audioError, setAudioError] = useState(false);
+  const {
+    track: audioTrack,
+    playing,
+    loop,
+    muted,
+    progress,
+    duration,
+    audioError,
+    sessionActive,
+    setQueue,
+    selectIndex,
+    togglePlay,
+    setLoop,
+    setMuted,
+    goPrev: audioPrev,
+    goNext: audioNext,
+  } = useShlokaAudio();
 
   useEffect(() => {
     let cancelled = false;
@@ -205,8 +236,6 @@ export default function ShlokasPage() {
     }
     const firstOpen = filtered.findIndex((s) => !s.completed);
     setIndex(firstOpen >= 0 ? firstOpen : 0);
-    audioRef.current?.pause();
-    setPlaying(false);
   }, [chapterFilter, bookId, filtered.length]);
 
   // Persist filters
@@ -219,6 +248,7 @@ export default function ShlokasPage() {
   const total = filtered.length;
   const completedInFilter = filtered.filter((s) => s.completed).length;
   const completedAll = allSlokas.filter((s) => s.completed).length;
+  const bookShortName = activeBook?.shortName || "Bhagavad Gita";
 
   const chapterTitle = useMemo(() => {
     if (chapterFilter === "all") return "All chapters";
@@ -228,68 +258,118 @@ export default function ShlokasPage() {
       : `Chapter ${chapterFilter}`;
   }, [chapterFilter, chapters]);
 
-  // Audio source swap
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !current) return;
-    setPlaying(false);
-    setProgress(0);
-    setDuration(0);
-    setAudioError(false);
-    el.pause();
-    el.currentTime = 0;
-    if (current.audioUrl) {
-      el.src = current.audioUrl;
-      el.load();
-    } else {
-      el.removeAttribute("src");
-      el.load();
-    }
-  }, [current?.id, current?.audioUrl]);
-
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    el.loop = loop;
-    el.muted = muted;
-  }, [loop, muted]);
-
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-    };
-  }, []);
-
-  const goTo = useCallback(
-    (nextIndex: number) => {
-      if (total === 0) return;
-      audioRef.current?.pause();
-      setPlaying(false);
-      setIndex(Math.max(0, Math.min(total - 1, nextIndex)));
-    },
-    [total]
+  // Keep global queue in sync with filtered list (survives tab/route changes)
+  const queueSignature = useMemo(
+    () =>
+      filtered
+        .filter((s) => s.audioUrl)
+        .map((s) => `${s.id}:${s.audioUrl}`)
+        .join("|"),
+    [filtered]
   );
 
-  const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
-  const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
+  useEffect(() => {
+    if (loading) return;
+    const tracks = filtered
+      .map((s) => toTrack(s, bookShortName))
+      .filter((t): t is ShlokaTrack => Boolean(t));
+    if (tracks.length === 0) return;
 
-  const togglePlay = useCallback(async () => {
-    const el = audioRef.current;
-    if (!el || !current?.audioUrl) return;
-    if (playing) {
-      el.pause();
-      setPlaying(false);
+    // Prefer keeping the already-playing track when returning to this page
+    let start = 0;
+    if (sessionActive && audioTrack) {
+      const playingIdx = tracks.findIndex((t) => t.id === audioTrack.id);
+      if (playingIdx >= 0) {
+        setQueue(tracks, playingIdx);
+        return;
+      }
+    }
+
+    if (current) {
+      const exact = tracks.findIndex((t) => t.id === current.id);
+      if (exact >= 0) start = exact;
+      else {
+        const after = filtered.findIndex((s, i) => i >= index && s.audioUrl);
+        if (after >= 0) {
+          const id = filtered[after].id;
+          const ti = tracks.findIndex((t) => t.id === id);
+          if (ti >= 0) start = ti;
+        }
+      }
+    }
+    setQueue(tracks, start);
+    // queueSignature captures filtered audio membership; index/current for start
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed by signature
+  }, [
+    loading,
+    queueSignature,
+    index,
+    current?.id,
+    bookShortName,
+    setQueue,
+    sessionActive,
+    audioTrack?.id,
+  ]);
+
+  // When mini-player / Media Session changes track, keep page index in sync
+  useEffect(() => {
+    if (!audioTrack) return;
+    const i = filtered.findIndex((s) => s.id === audioTrack.id);
+    if (i >= 0 && i !== index) setIndex(i);
+  }, [audioTrack?.id, filtered, index]);
+
+  const goTo = useCallback(
+    (nextIndex: number, autoPlay = false) => {
+      if (total === 0) return;
+      const safe = Math.max(0, Math.min(total - 1, nextIndex));
+      setIndex(safe);
+      const row = filtered[safe];
+      if (!row) return;
+      const tracks = filtered
+        .map((s) => toTrack(s, bookShortName))
+        .filter((t): t is ShlokaTrack => Boolean(t));
+      const ti = tracks.findIndex((t) => t.id === row.id);
+      if (ti >= 0) selectIndex(ti, autoPlay);
+    },
+    [total, filtered, bookShortName, selectIndex]
+  );
+
+  const goPrev = useCallback(() => {
+    if (playing || audioTrack) {
+      audioPrev();
       return;
     }
-    try {
-      await el.play();
-      setPlaying(true);
-      setAudioError(false);
-    } catch {
-      setAudioError(true);
-      setPlaying(false);
+    goTo(index - 1);
+  }, [playing, audioTrack, audioPrev, goTo, index]);
+
+  const goNext = useCallback(() => {
+    if (playing || audioTrack) {
+      audioNext();
+      return;
     }
-  }, [current?.audioUrl, playing]);
+    goTo(index + 1);
+  }, [playing, audioTrack, audioNext, goTo, index]);
+
+  const handleTogglePlay = useCallback(async () => {
+    if (!current?.audioUrl) return;
+    // Ensure queue points at current verse before play
+    const tracks = filtered
+      .map((s) => toTrack(s, bookShortName))
+      .filter((t): t is ShlokaTrack => Boolean(t));
+    const ti = tracks.findIndex((t) => t.id === current.id);
+    if (ti >= 0 && audioTrack?.id !== current.id) {
+      selectIndex(ti, true);
+      return;
+    }
+    await togglePlay();
+  }, [
+    current,
+    filtered,
+    bookShortName,
+    audioTrack?.id,
+    selectIndex,
+    togglePlay,
+  ]);
 
   const markComplete = useCallback(() => {
     if (!current) return;
@@ -314,12 +394,12 @@ export default function ShlokasPage() {
         goNext();
       } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
-        void togglePlay();
+        void handleTogglePlay();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goPrev, goNext, togglePlay]);
+  }, [goPrev, goNext, handleTogglePlay]);
 
   const selectBook = (id: string) => {
     setBookId(id);
@@ -368,22 +448,6 @@ export default function ShlokasPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-8rem)] max-w-3xl flex-col">
-      <audio
-        ref={audioRef}
-        preload="metadata"
-        onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
-        onEnded={() => {
-          if (!loop) setPlaying(false);
-        }}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onError={() => {
-          setAudioError(true);
-          setPlaying(false);
-        }}
-      />
-
       {/* Page header */}
       <header className="mb-4 shrink-0 sm:mb-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -738,7 +802,7 @@ export default function ShlokasPage() {
                 <ControlButton
                   label={playing ? "Pause" : "Play"}
                   primary
-                  onClick={() => void togglePlay()}
+                  onClick={() => void handleTogglePlay()}
                   disabled={!hasAudio}
                 >
                   {playing ? (
@@ -825,7 +889,8 @@ export default function ShlokasPage() {
           </div>
 
           <p className="mt-1 pb-4 text-center text-[10px] text-[var(--text-muted)] sm:text-xs">
-            Keyboard: ← prev · → next · Space play/pause
+            Keyboard: ← prev · → next · Space play/pause · continues in
+            background
           </p>
         </>
       )}

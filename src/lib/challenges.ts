@@ -238,36 +238,34 @@ export function createDemoPublicChallenge(): SavedChallenge {
     createdBy: "Harsha",
     activities: ["chanting", "reading", "gratitude"],
     activityLabels: ["Chanting (japa)", "Reading", "Gratitude journal"],
-    invites: [
-      "Radha Priya Dasi",
-      "Govinda Das",
-      "Tulasi Devi",
-      "Amrita Kirtan Das",
-    ],
+    invites: ["Yuddhistir", "Bhima", "Arjuna", "Tulasi Devi", "Amrita Kirtan Das"],
     participants: [
       {
-        id: "p-demo-harsha",
-        name: "Harsha",
+        id: "p-demo-yuddhistir",
+        name: "Yuddhistir",
         accepted: true,
-        completedDays: daysFromPattern(days, 12, [13, 14]),
+        // 1st on podium — golden
+        completedDays: daysFromPattern(days, 15),
       },
       {
-        id: "p-demo-radha",
-        name: "Radha Priya Dasi",
+        id: "p-demo-bhima",
+        name: "Bhima",
         accepted: true,
+        // 2nd on podium — blue
+        completedDays: daysFromPattern(days, 12, [13]),
+      },
+      {
+        id: "p-demo-arjuna",
+        name: "Arjuna",
+        accepted: true,
+        // 3rd on podium — light pink
         completedDays: daysFromPattern(days, 10, [11]),
-      },
-      {
-        id: "p-demo-govinda",
-        name: "Govinda Das",
-        accepted: true,
-        completedDays: daysFromPattern(days, 8, [9, 11]),
       },
       {
         id: "p-demo-tulasi",
         name: "Tulasi Devi",
         accepted: true,
-        completedDays: daysFromPattern(days, 14),
+        completedDays: daysFromPattern(days, 8, [9]),
       },
       {
         id: "p-demo-amrita",
@@ -281,14 +279,41 @@ export function createDemoPublicChallenge(): SavedChallenge {
 
 /**
  * Ensures a dummy public challenge exists so the day-grid UI is visible.
- * Does not overwrite if the demo id is already stored.
+ * Refreshes the fixed demo roster when it still looks like sample data
+ * (all participant ids are p-demo-*), so podium names stay current.
  */
 export function ensureDemoPublicChallenge(): SavedChallenge[] {
   const list = loadChallengesRaw();
-  if (list.some((c) => c.id === DEMO_PUBLIC_CHALLENGE_ID)) {
+  const existingIdx = list.findIndex((c) => c.id === DEMO_PUBLIC_CHALLENGE_ID);
+  if (existingIdx === -1) {
+    const next = [createDemoPublicChallenge(), ...list];
+    saveChallenges(next);
+    return next;
+  }
+
+  const existing = list[existingIdx];
+  const isPureDemoRoster =
+    existing.participants.length > 0 &&
+    existing.participants.every((p) => p.id.startsWith("p-demo-"));
+  const hasPodiumNames = ["Yuddhistir", "Bhima", "Arjuna"].every((n) =>
+    existing.participants.some((p) => p.name === n)
+  );
+
+  if (!isPureDemoRoster || hasPodiumNames) {
     return list;
   }
-  const next = [createDemoPublicChallenge(), ...list];
+
+  // Upgrade legacy demo names/scores without wiping real joiners.
+  const fresh = createDemoPublicChallenge();
+  const next = list.map((c, i) =>
+    i === existingIdx
+      ? {
+          ...c,
+          invites: fresh.invites,
+          participants: fresh.participants,
+        }
+      : c
+  );
   saveChallenges(next);
   return next;
 }

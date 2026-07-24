@@ -2,10 +2,11 @@ import { IntroSplash } from "@/components/ambient/IntroSplash";
 
 /**
  * Shared shell for /login and /register.
- * Shows a Netflix-style intro once per browser session.
+ * Shows a Divine Connection intro once per browser session.
+ * User must tap BEGIN JOURNEY — no auto-skip to login.
  *
  * A blocking inline script runs before paint so:
- * - First visit: intro is present in SSR HTML (covers login immediately)
+ * - First visit: intro covers login immediately
  * - Return visit: data-intro-done hides the splash before first paint
  */
 export default function AuthLayout({

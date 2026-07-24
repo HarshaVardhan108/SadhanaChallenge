@@ -12,12 +12,10 @@ import {
   Users,
   Award,
   UserPlus,
-  MapPin,
   User,
   Settings,
   Bell,
   BarChart3,
-  Calendar,
   LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,8 +32,6 @@ const mainNav = [
 const moreNav = [
   { href: "/achievements", label: "Achievements", icon: Award },
   { href: "/invite", label: "Invite Friends", icon: UserPlus },
-  { href: "/temple-map", label: "Temple Map", icon: MapPin },
-  { href: "/festivals", label: "Festivals", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },

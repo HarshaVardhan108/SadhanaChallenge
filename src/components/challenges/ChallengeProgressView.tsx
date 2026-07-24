@@ -639,9 +639,6 @@ export function ChallengeProgressView({
             {me.missed > 0 ? (
               <span className="text-red-600"> · {me.missed} missed</span>
             ) : null}
-            {canEditMine
-              ? " · Mark today complete within its 24-hour window"
-              : ""}
           </p>
         </div>
       )}

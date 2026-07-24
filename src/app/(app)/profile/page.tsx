@@ -20,17 +20,21 @@ type ProfileUser = {
   avatarUrl?: string | null;
 };
 
+const SPIRITUAL_KEY = "bhakti-spiritual-name";
+
 export default function ProfilePage() {
   const unlocked = achievements.filter((a) => a.unlocked);
   const fileRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [spiritualName, setSpiritualName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
+      setSpiritualName(localStorage.getItem(SPIRITUAL_KEY) || "");
       const raw = localStorage.getItem("bhakti-user");
       if (raw) {
         const u = JSON.parse(raw) as ProfileUser;
@@ -168,8 +172,15 @@ export default function ProfilePage() {
               {displayName}
             </h2>
             <p className="text-peacock">
-              Spiritual name pending · Aspiring devotee
+              {spiritualName
+                ? spiritualName
+                : "Spiritual name pending · Aspiring devotee"}
             </p>
+            {user?.email && (
+              <p className="mt-0.5 text-sm text-[var(--text-muted)]">
+                {user.email}
+              </p>
+            )}
             <p className="mt-1 text-sm text-[var(--text-muted)]">
               {templeLine ? `🛕 ${templeLine}` : "🛕 Temple not set"}
             </p>
