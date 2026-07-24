@@ -106,6 +106,23 @@ async function main() {
     );
   `);
 
+  // Personal invite links
+  await client.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_code TEXT;
+  `);
+  await client.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by_user_id UUID
+      REFERENCES users(id) ON DELETE SET NULL;
+  `);
+  try {
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS users_invite_code_uidx
+        ON users (invite_code) WHERE invite_code IS NOT NULL;
+    `);
+  } catch {
+    /* exists */
+  }
+
   // Web Push subscriptions (daily 9pm reminders)
   await client.query(`
     CREATE TABLE IF NOT EXISTS push_subscriptions (

@@ -33,5 +33,7 @@ export type DbUser = {
   city: string | null;
   country: string | null;
   avatar_url?: string | null;
+  invite_code?: string | null;
+  invited_by_user_id?: string | null;
   created_at: Date;
 };

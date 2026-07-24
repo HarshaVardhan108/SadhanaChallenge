@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { VrindavanBackground } from "@/components/ambient/VrindavanBackground";
 import { DivineParticles } from "@/components/ambient/DivineParticles";
@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { countries } from "@/lib/data";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -22,6 +23,34 @@ export default function RegisterPage() {
   const [accept, setAccept] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [inviteRef, setInviteRef] = useState("");
+  const [inviterLabel, setInviterLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("ref") || searchParams.get("invite") || "";
+    let fromStore = "";
+    try {
+      fromStore =
+        sessionStorage.getItem("bhakti-invite-ref") ||
+        localStorage.getItem("bhakti-invite-ref") ||
+        "";
+    } catch {
+      /* ignore */
+    }
+    const code = (fromQuery || fromStore).trim();
+    if (!code) return;
+    setInviteRef(code);
+    fetch(`/api/invite/${encodeURIComponent(code)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (data: { inviter?: { fullName?: string } } | null) => {
+          if (data?.inviter?.fullName) {
+            setInviterLabel(data.inviter.fullName);
+          }
+        }
+      )
+      .catch(() => null);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +80,7 @@ export default function RegisterPage() {
           temple,
           city,
           country,
+          inviteRef: inviteRef || undefined,
         }),
       });
       const data = (await res.json()) as {
@@ -65,6 +95,8 @@ export default function RegisterPage() {
       try {
         localStorage.removeItem("bhakti-challenges");
         localStorage.removeItem("bhakti-guest");
+        localStorage.removeItem("bhakti-invite-ref");
+        sessionStorage.removeItem("bhakti-invite-ref");
         localStorage.setItem("bhakti-is-new-user", "1");
         localStorage.setItem("bhakti-user", JSON.stringify(data.user || {}));
         // Show Notification_image popup once after first registration
@@ -96,6 +128,11 @@ export default function RegisterPage() {
             <h1 className="mt-2 font-serif text-2xl font-bold text-krishna sm:text-3xl">
               Join the Spiritual Challenge
             </h1>
+            {inviterLabel ? (
+              <p className="mt-2 text-sm text-peacock">
+                Invited by <strong>{inviterLabel}</strong>
+              </p>
+            ) : null}
             <p className="mt-2 text-sm text-[var(--text-muted)]">
               Register with email or mobile number
             </p>
@@ -205,5 +242,19 @@ export default function RegisterPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center text-sm text-[var(--text-muted)]">
+          Loading…
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

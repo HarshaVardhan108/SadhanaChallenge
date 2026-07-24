@@ -8,6 +8,11 @@ import {
   toSessionUser,
 } from "@/lib/auth";
 import { query, type DbUser } from "@/lib/db";
+import {
+  ensureInviteSchema,
+  ensureUserInviteCode,
+  findUserByInviteCode,
+} from "@/lib/invite";
 
 export async function POST(req: Request) {
   try {
@@ -19,6 +24,9 @@ export async function POST(req: Request) {
       temple?: string;
       city?: string;
       country?: string;
+      /** Invite code from /join/{code} or ?ref= */
+      inviteRef?: string;
+      ref?: string;
     };
 
     const fullName = (body.fullName || "").trim();
@@ -71,10 +79,22 @@ export async function POST(req: Request) {
       }
     }
 
+    await ensureInviteSchema();
+
+    // Resolve optional inviter from invite code
+    let invitedByUserId: string | null = null;
+    const ref = (body.inviteRef || body.ref || "").trim();
+    if (ref) {
+      const inviter = await findUserByInviteCode(ref);
+      if (inviter) invitedByUserId = inviter.id;
+    }
+
     const password_hash = storePassword(password);
     const inserted = await query<DbUser>(
-      `INSERT INTO users (full_name, email, phone, password_hash, temple, city, country)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO users (
+         full_name, email, phone, password_hash, temple, city, country, invited_by_user_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         fullName,
@@ -84,13 +104,24 @@ export async function POST(req: Request) {
         body.temple || "",
         body.city || "",
         body.country || "India",
+        invitedByUserId,
       ]
     );
 
     const user = inserted.rows[0];
+    // Give the new user their own invite code immediately
+    try {
+      await ensureUserInviteCode(user.id);
+    } catch {
+      /* non-fatal */
+    }
     const session = toSessionUser(user);
     const token = await createSessionToken(session);
-    const res = NextResponse.json({ ok: true, user: session });
+    const res = NextResponse.json({
+      ok: true,
+      user: session,
+      invitedBy: invitedByUserId ? true : false,
+    });
     res.cookies.set(AUTH_COOKIE, token, await cookieOptions());
     return res;
   } catch (e) {
