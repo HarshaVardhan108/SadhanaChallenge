@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:setup": "node scripts/setup-auth-db.mjs",
+    "db:setup-app": "node scripts/setup-app-db.mjs",
+    "push:vapid": "node scripts/generate-vapid-keys.mjs",
     "storage:seed": "node scripts/seed-supabase-storage.mjs",
     "storage:seed-profiles": "node scripts/seed-profiles-media.mjs"
   },
@@ -24,7 +26,8 @@
     "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -32,6 +35,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",

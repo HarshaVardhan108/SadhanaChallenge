@@ -14,8 +14,7 @@ import {
   getChallengeLeaderboardRows,
   getLoggedInUserProfile,
   getMyPublicChallenges,
-  loadChallengesWithDemo,
-  saveChallenges,
+  loadChallengesFromServer,
   type LeaderboardRow,
   type LocalUserProfile,
   type SavedChallenge,
@@ -555,10 +554,10 @@ export default function LeaderboardPage() {
     const profile = guest ? null : getLoggedInUserProfile();
     setUser(profile);
 
-    const list = loadChallengesWithDemo();
-    saveChallenges(list);
-    setChallenges(list);
-    setReady(true);
+    void loadChallengesFromServer().then((list) => {
+      setChallenges(list);
+      setReady(true);
+    });
 
     if (!guest) {
       fetch("/api/auth/me")
@@ -581,6 +580,7 @@ export default function LeaderboardPage() {
               } catch {
                 /* ignore */
               }
+              void loadChallengesFromServer().then(setChallenges);
             }
           }
         )

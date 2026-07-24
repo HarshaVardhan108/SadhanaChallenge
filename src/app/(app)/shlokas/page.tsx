@@ -56,6 +56,44 @@ function saveCompletedIds(ids: Set<string>) {
   } catch {
     /* ignore */
   }
+  // Sync to PostgreSQL when logged in
+  try {
+    if (localStorage.getItem("bhakti-guest") === "1") return;
+    if (!localStorage.getItem("bhakti-user")) return;
+  } catch {
+    return;
+  }
+  void fetch("/api/shlokas/progress", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ completedIds: [...ids] }),
+  }).catch(() => {
+    /* offline */
+  });
+}
+
+async function loadCompletedIdsFromServer(): Promise<Set<string>> {
+  try {
+    if (localStorage.getItem("bhakti-guest") === "1") {
+      return loadCompletedIds();
+    }
+    const res = await fetch("/api/shlokas/progress", { credentials: "include" });
+    if (!res.ok) return loadCompletedIds();
+    const data = (await res.json()) as { completedIds?: string[] };
+    if (Array.isArray(data.completedIds)) {
+      const set = new Set(data.completedIds.map(String));
+      try {
+        localStorage.setItem(COMPLETED_KEY, JSON.stringify([...set]));
+      } catch {
+        /* ignore */
+      }
+      return set;
+    }
+  } catch {
+    /* offline */
+  }
+  return loadCompletedIds();
 }
 
 function loadSavedFilters(): { bookId: string; chapter: number | "all" } {
@@ -155,7 +193,8 @@ export default function ShlokasPage() {
         };
         if (cancelled) return;
 
-        const done = loadCompletedIds();
+        const done = await loadCompletedIdsFromServer();
+        if (cancelled) return;
         const rows = (data.slokas || []).map((s) => ({
           ...s,
           completed: done.has(s.id),

@@ -8,6 +8,7 @@ import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { isGuestUser } from "@/lib/guest";
+import { PushReminder } from "@/components/pwa/PushReminder";
 
 // Notifications section temporarily disabled
 // const reminders = [ ... ];
@@ -127,11 +128,18 @@ export default function SettingsPage() {
       return;
     }
 
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
+    Promise.all([
+      fetch("/api/auth/me").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/user/settings", { credentials: "include" }).then((r) =>
+        r.ok ? r.json() : null
+      ),
+    ])
       .then(
-        (
-          data: {
+        ([
+          data,
+          settingsData,
+        ]: [
+          {
             user?: {
               id?: string;
               fullName?: string;
@@ -142,14 +150,23 @@ export default function SettingsPage() {
               country?: string | null;
               avatarUrl?: string | null;
             };
-          } | null
-        ) => {
+          } | null,
+          {
+            settings?: {
+              spiritualName?: string;
+              dailyRounds?: number;
+              readingMinutes?: number;
+              fluteAmbient?: boolean;
+            };
+          } | null,
+        ]) => {
           if (data?.user) {
             const u = data.user;
+            const s = settingsData?.settings;
             setForm({
               id: u.id,
               fullName: u.fullName || "",
-              spiritualName: loadSpiritualName(),
+              spiritualName: s?.spiritualName || loadSpiritualName(),
               email: u.email || "",
               temple: u.temple || "",
               city: u.city || "",
@@ -157,6 +174,27 @@ export default function SettingsPage() {
               phone: u.phone || "",
               avatarUrl: u.avatarUrl,
             });
+            if (s) {
+              if (s.dailyRounds) setRounds(String(s.dailyRounds));
+              if (s.readingMinutes) setReading(String(s.readingMinutes));
+              if (typeof s.fluteAmbient === "boolean") setFlute(s.fluteAmbient);
+              try {
+                localStorage.setItem(
+                  SPIRITUAL_KEY,
+                  s.spiritualName || ""
+                );
+                localStorage.setItem(
+                  GOALS_KEY,
+                  JSON.stringify({
+                    rounds: String(s.dailyRounds || 16),
+                    reading: String(s.readingMinutes || 20),
+                  })
+                );
+                localStorage.setItem(FLUTE_KEY, s.fluteAmbient ? "1" : "0");
+              } catch {
+                /* ignore */
+              }
+            }
             try {
               localStorage.setItem("bhakti-user", JSON.stringify(u));
             } catch {
@@ -182,7 +220,7 @@ export default function SettingsPage() {
     setMessage(null);
     setError(null);
 
-    // Spiritual name + goals always local
+    // Local cache for instant UI (guest + offline)
     try {
       localStorage.setItem(SPIRITUAL_KEY, form.spiritualName.trim());
       localStorage.setItem(
@@ -195,7 +233,6 @@ export default function SettingsPage() {
     }
 
     if (isGuest || !form.id) {
-      // Guest / offline: persist display fields in local cache only
       try {
         const raw = localStorage.getItem("bhakti-user");
         const prev = raw ? JSON.parse(raw) : {};
@@ -218,6 +255,7 @@ export default function SettingsPage() {
     }
 
     try {
+      // Profile fields → users table
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -241,6 +279,19 @@ export default function SettingsPage() {
         setSaving(false);
         return;
       }
+
+      // Settings extras → user_settings table
+      await fetch("/api/user/settings", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spiritualName: form.spiritualName.trim(),
+          dailyRounds: Number(rounds) || 16,
+          readingMinutes: Number(reading) || 20,
+          fluteAmbient: flute,
+        }),
+      }).catch(() => null);
 
       const u = data.user;
       setForm((f) => ({
@@ -429,6 +480,13 @@ export default function SettingsPage() {
         {/* Notifications — hidden for now
         ...
         */}
+
+        <GlassCard>
+          <h2 className="mb-3 font-serif text-lg font-bold text-krishna">
+            Daily reminders
+          </h2>
+          <PushReminder />
+        </GlassCard>
 
         <GlassCard>
           <h2 className="font-serif text-lg font-bold text-krishna">

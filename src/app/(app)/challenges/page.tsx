@@ -9,8 +9,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { challenges } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import {
-  loadChallengesWithDemo,
-  saveChallenges,
+  loadChallengesFromServer,
   challengeProgress,
   formatChallengeDate,
   challengePath,
@@ -123,9 +122,7 @@ export default function ChallengesPage() {
 
   useEffect(() => {
     setUser(getLoggedInUserProfile());
-    const list = loadChallengesWithDemo();
-    if (list.length > 0) saveChallenges(list);
-    setSaved(list);
+    void loadChallengesFromServer().then(setSaved);
 
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -146,6 +143,7 @@ export default function ChallengesPage() {
             } catch {
               /* ignore */
             }
+            void loadChallengesFromServer().then(setSaved);
           }
         }
       )

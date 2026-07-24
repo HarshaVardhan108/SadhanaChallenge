@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { quotes } from "@/lib/data";
 import {
-  loadChallengesWithDemo,
+  loadChallengesFromServer,
   challengeProgress,
   formatChallengeDate,
   getLoggedInUserProfile,
@@ -17,13 +17,13 @@ import {
   getParticipantActiveDayAction,
   markOwnActiveDayComplete,
   participantCompletedCount,
-  saveChallenges,
   challengePath,
   type LocalUserProfile,
   type SavedChallenge,
 } from "@/lib/challenges";
 import {
   getDailyStreakSnapshot,
+  loadStreakFromServer,
   markTodayComplete,
   type DailyStreakSnapshot,
 } from "@/lib/daily-streak";
@@ -247,9 +247,7 @@ export default function DashboardPage() {
     if (guest) {
       setDisplayName("Guest");
       setUser(null);
-      const list = loadChallengesWithDemo();
-      setMyChallenges(list);
-      saveChallenges(list);
+      void loadChallengesFromServer().then(setMyChallenges);
       return;
     }
 
@@ -258,9 +256,8 @@ export default function DashboardPage() {
     if (profile?.fullName) {
       setDisplayName(profile.fullName.split(" ")[0]);
     }
-    const list = loadChallengesWithDemo();
-    setMyChallenges(list);
-    saveChallenges(list);
+    void loadChallengesFromServer().then(setMyChallenges);
+    void loadStreakFromServer().then(setStreak);
 
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
@@ -283,6 +280,8 @@ export default function DashboardPage() {
             } catch {
               /* ignore */
             }
+            // Re-fetch challenges now that session is confirmed
+            void loadChallengesFromServer().then(setMyChallenges);
           }
         }
       )

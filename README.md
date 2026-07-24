@@ -12,15 +12,50 @@ A premium, highly animated Krishna Consciousness spiritual competition website i
 
 ```bash
 npm install
+npm run db:setup      # users table
+npm run db:setup-app  # challenges, streaks, shlokas, settings
 npm run dev
 ```
 
+PostgreSQL (defaults):
+
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=SadhanaChallenge
+DB_USER=postgres
+DB_PASSWORD=admin123
+```
+
 Open [http://localhost:3000](http://localhost:3000) → `/login` → enter the Lotus Garden.
+
+Logged-in data (challenges, streaks, shloka progress, settings) is stored in **PostgreSQL**. Guests still use device-local cache.
 
 ```bash
 npm run build
 npm run start
 ```
+
+### Progressive Web App (PWA)
+
+The app is installable on mobile and desktop:
+
+- Web App Manifest (`/manifest.webmanifest`)
+- Service worker (`/sw.js`) with offline shell caching
+- Install prompt (Chrome/Edge/Android) + iOS “Add to Home Screen” tip
+- Icons under `public/icons/`
+
+Serve over **HTTPS** (or `localhost`) for install + SW registration.
+
+### Daily 9 PM push reminders
+
+```bash
+npm run push:vapid      # generate VAPID + CRON_SECRET → add to .env.local
+npm run db:setup-app    # creates push_subscriptions table
+```
+
+Users enable reminders under **Notifications** or **Settings**.  
+Cron (Supabase Edge Function or Vercel Cron) hits `POST /api/push/send-daily` hourly; pushes only fire at **21:00 Asia/Kolkata**. See `supabase/README.md`.
 
 ---
 

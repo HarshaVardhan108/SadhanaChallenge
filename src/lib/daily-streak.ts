@@ -148,9 +148,75 @@ export function getDailyStreakSnapshot(
   };
 }
 
+function isLoggedInClient(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (localStorage.getItem("bhakti-guest") === "1") return false;
+    return Boolean(localStorage.getItem("bhakti-user"));
+  } catch {
+    return false;
+  }
+}
+
+/** Push streak state to PostgreSQL when logged in. */
+function syncStreakToDb(action: "markToday" | "unmarkToday" | "full", state?: DailyStreakState) {
+  if (!isLoggedInClient()) return;
+  const body =
+    action === "markToday"
+      ? { markToday: true }
+      : action === "unmarkToday"
+        ? { unmarkToday: true }
+        : {
+            completedDates: state?.completedDates ?? [],
+            bestStreak: state?.bestStreak ?? 0,
+          };
+  void fetch("/api/streak", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then(
+      (
+        data: {
+          state?: DailyStreakState;
+        } | null
+      ) => {
+        if (data?.state) saveDailyStreak(data.state);
+      }
+    )
+    .catch(() => {
+      /* offline — local already saved */
+    });
+}
+
+/** Load streak from DB into local cache (call on dashboard mount). */
+export async function loadStreakFromServer(): Promise<DailyStreakSnapshot> {
+  if (!isLoggedInClient()) {
+    return getDailyStreakSnapshot();
+  }
+  try {
+    const res = await fetch("/api/streak", { credentials: "include" });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        state?: DailyStreakState;
+        snapshot?: DailyStreakSnapshot;
+      };
+      if (data.state) {
+        saveDailyStreak(data.state);
+        return data.snapshot ?? getDailyStreakSnapshot(data.state);
+      }
+    }
+  } catch {
+    /* offline */
+  }
+  return getDailyStreakSnapshot();
+}
+
 /**
  * Mark today complete. Extends streak if yesterday was marked (or starts at 1).
- * Idempotent if already marked today.
+ * Idempotent if already marked today. Syncs to DB when logged in.
  */
 export function markTodayComplete(now: Date = new Date()): DailyStreakSnapshot {
   const state = loadDailyStreak();
@@ -161,6 +227,7 @@ export function markTodayComplete(now: Date = new Date()): DailyStreakSnapshot {
   const snap = getDailyStreakSnapshot(state, now);
   state.bestStreak = Math.max(state.bestStreak, snap.currentStreak, snap.bestStreak);
   saveDailyStreak(state);
+  syncStreakToDb("markToday", state);
   return getDailyStreakSnapshot(state, now);
 }
 
@@ -173,5 +240,6 @@ export function unmarkToday(now: Date = new Date()): DailyStreakSnapshot {
   // bestStreak is historical peak — keep max recorded
   state.bestStreak = Math.max(state.bestStreak, snap.currentStreak);
   saveDailyStreak(state);
+  syncStreakToDb("unmarkToday", state);
   return getDailyStreakSnapshot(state, now);
 }

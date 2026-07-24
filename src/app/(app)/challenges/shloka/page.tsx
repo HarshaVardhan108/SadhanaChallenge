@@ -31,6 +31,7 @@ import {
   getCreatorNameFromStorage,
   getLoggedInUserProfile,
   getShlokaVisibilityConstraint,
+  loadChallengesFromServer,
   loadChallengesWithDemo,
   newChallengeId,
   prependChallenge,

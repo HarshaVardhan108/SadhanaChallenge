@@ -9,7 +9,7 @@ import {
   getChallengeLeaderboardRows,
   getLoggedInUserProfile,
   getMyJoinedChallenges,
-  loadChallengesWithDemo,
+  loadChallengesFromServer,
   type LocalUserProfile,
   type SavedChallenge,
 } from "@/lib/challenges";
@@ -41,6 +41,29 @@ function loadShlokasCompletedCount(): number {
   } catch {
     return 0;
   }
+}
+
+async function loadShlokasCompletedCountAsync(): Promise<number> {
+  try {
+    const res = await fetch("/api/shlokas/progress", { credentials: "include" });
+    if (res.ok) {
+      const data = (await res.json()) as { completedIds?: string[] };
+      if (Array.isArray(data.completedIds)) {
+        try {
+          localStorage.setItem(
+            SHLOKAS_COMPLETED_KEY,
+            JSON.stringify(data.completedIds)
+          );
+        } catch {
+          /* ignore */
+        }
+        return data.completedIds.length;
+      }
+    }
+  } catch {
+    /* offline */
+  }
+  return loadShlokasCompletedCount();
 }
 
 function normalizeName(s: string): string {
@@ -113,9 +136,10 @@ function countFirstRanks(
 function buildMetrics(
   user: LocalUserProfile | null,
   challenges: SavedChallenge[],
-  nowMs: number
+  nowMs: number,
+  shlokasCompleted = 0
 ): Metric[] {
-  const shlokas = loadShlokasCompletedCount();
+  const shlokas = shlokasCompleted;
   let joined = 0;
   let firstRanks = 0;
   let invites = 0;
@@ -338,6 +362,7 @@ export default function AnalyticsPage() {
   const [isGuest, setIsGuest] = useState(false);
   const [user, setUser] = useState<LocalUserProfile | null>(null);
   const [challenges, setChallenges] = useState<SavedChallenge[]>([]);
+  const [shlokaCount, setShlokaCount] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -350,8 +375,14 @@ export default function AnalyticsPage() {
     setIsGuest(guest);
     const profile = guest ? null : getLoggedInUserProfile();
     setUser(profile);
-    setChallenges(loadChallengesWithDemo());
-    setReady(true);
+    void Promise.all([
+      loadChallengesFromServer(),
+      loadShlokasCompletedCountAsync(),
+    ]).then(([list, shlokas]) => {
+      setChallenges(list);
+      setShlokaCount(shlokas);
+      setReady(true);
+    });
 
     if (!guest) {
       fetch("/api/auth/me")
@@ -378,8 +409,8 @@ export default function AnalyticsPage() {
   }, []);
 
   const metrics = useMemo(
-    () => buildMetrics(user, challenges, nowMs),
-    [user, challenges, nowMs]
+    () => buildMetrics(user, challenges, nowMs, shlokaCount),
+    [user, challenges, nowMs, shlokaCount]
   );
   const total = metrics.reduce((s, m) => s + m.value, 0);
 

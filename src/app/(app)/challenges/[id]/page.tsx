@@ -16,9 +16,8 @@ import {
   getLoggedInUserProfile,
   getParticipantActiveDayAction,
   joinChallengeAsUser,
-  loadChallengesWithDemo,
+  loadChallengesFromServer,
   markOwnActiveDayComplete,
-  saveChallenges,
   toggleOwnParticipantDay,
   toggleParticipantDay,
   challengeProgress,
@@ -53,17 +52,16 @@ export default function ChallengeDetailPage() {
       setMissing(true);
       return;
     }
-    // Ensure demo seed exists before lookup
-    const list = loadChallengesWithDemo();
-    saveChallenges(list);
-    const found = list.find((c) => c.id === id) ?? getChallengeById(id);
-    if (!found) {
-      setChallenge(null);
-      setMissing(true);
-      return;
-    }
-    setMissing(false);
-    setChallenge(found);
+    void loadChallengesFromServer().then((list) => {
+      const found = list.find((c) => c.id === id) ?? getChallengeById(id);
+      if (!found) {
+        setChallenge(null);
+        setMissing(true);
+        return;
+      }
+      setMissing(false);
+      setChallenge(found);
+    });
   }, [id]);
 
   useEffect(() => {

@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Libre_Baskerville, Poppins, Noto_Serif_Devanagari } from "next/font/google";
+import { PwaRegister } from "@/components/pwa/PwaRegister";
 import "./globals.css";
 
 const baskerville = Libre_Baskerville({
@@ -33,6 +34,37 @@ export const metadata: Metadata = {
     "Spiritual Challenge",
     "Hare Krishna",
   ],
+  applicationName: "Bhakti Challenge",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Bhakti Challenge",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#1a4fa3" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a4fa3" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
@@ -51,6 +83,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
+        <PwaRegister />
       </body>
     </html>
   );

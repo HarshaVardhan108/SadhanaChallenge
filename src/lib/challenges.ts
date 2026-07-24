@@ -335,9 +335,53 @@ export function loadChallenges(): SavedChallenge[] {
   return loadChallengesRaw();
 }
 
-/** Load challenges and seed the demo public challenge if missing. */
+/** Load challenges and seed the demo public challenge if missing (local cache). */
 export function loadChallengesWithDemo(): SavedChallenge[] {
   return ensureDemoPublicChallenge();
+}
+
+/**
+ * Load challenges from PostgreSQL when logged in, else localStorage.
+ * Also refreshes local cache and seeds demo if the DB is empty of public demos.
+ */
+export async function loadChallengesFromServer(): Promise<SavedChallenge[]> {
+  if (typeof window === "undefined") return [];
+  let isGuest = false;
+  try {
+    isGuest = localStorage.getItem("bhakti-guest") === "1";
+  } catch {
+    /* ignore */
+  }
+
+  if (!isGuest) {
+    try {
+      const res = await fetch("/api/challenges", { credentials: "include" });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          ok?: boolean;
+          challenges?: SavedChallenge[];
+        };
+        if (data.ok && Array.isArray(data.challenges)) {
+          const list = data.challenges.map(normalizeChallenge).filter(
+            Boolean
+          ) as SavedChallenge[];
+          // Seed demo into DB if missing from list
+          if (!list.some((c) => c.id === DEMO_PUBLIC_CHALLENGE_ID)) {
+            const demo = createDemoPublicChallenge();
+            syncChallengeToDb(demo);
+            const withDemo = [demo, ...list];
+            saveChallenges(withDemo);
+            return withDemo;
+          }
+          saveChallenges(list);
+          return list;
+        }
+      }
+    } catch {
+      /* fall through to local */
+    }
+  }
+  return loadChallengesWithDemo();
 }
 
 /** Migrate older challenge shapes (no id / participants). */
@@ -426,9 +470,29 @@ export function saveChallenges(list: SavedChallenge[]): void {
   localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(list));
 }
 
+/** Best-effort push one challenge to PostgreSQL (logged-in users). */
+function syncChallengeToDb(challenge: SavedChallenge): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (localStorage.getItem("bhakti-guest") === "1") return;
+    if (!localStorage.getItem("bhakti-user")) return;
+  } catch {
+    return;
+  }
+  void fetch("/api/challenges", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge }),
+  }).catch(() => {
+    /* offline */
+  });
+}
+
 export function prependChallenge(challenge: SavedChallenge): void {
   const existing = loadChallenges();
   saveChallenges([challenge, ...existing]);
+  syncChallengeToDb(challenge);
 }
 
 export function updateChallenge(
@@ -438,6 +502,8 @@ export function updateChallenge(
   const list = loadChallenges();
   const next = list.map((c) => (c.id === id ? updater(c) : c));
   saveChallenges(next);
+  const updated = next.find((c) => c.id === id);
+  if (updated) syncChallengeToDb(updated);
   return next;
 }
 
