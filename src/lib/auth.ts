@@ -90,14 +90,14 @@ export async function getSession(): Promise<SessionUser | null> {
 
 export function toSessionUser(row: DbUser): SessionUser {
   return {
-    id: row.id,
-    fullName: row.full_name,
-    email: row.email,
-    phone: row.phone,
-    temple: row.temple,
-    city: row.city,
-    country: row.country,
-    avatarUrl: row.avatar_url ?? null,
+    id: String(row.id),
+    fullName: String(row.full_name || ""),
+    email: row.email ? String(row.email) : null,
+    phone: row.phone ? String(row.phone) : null,
+    temple: row.temple ? String(row.temple) : null,
+    city: row.city ? String(row.city) : null,
+    country: row.country ? String(row.country) : null,
+    avatarUrl: row.avatar_url ? String(row.avatar_url) : null,
   };
 }
 
