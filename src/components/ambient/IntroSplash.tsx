@@ -103,7 +103,7 @@ export function IntroSplash() {
           ? "bhakti-intro-splash bhakti-intro-splash--exit"
           : "bhakti-intro-splash"
       }
-      aria-label="Welcome to Bhakti Challenge"
+      aria-label="Welcome to Sadhana Challenge"
       role="dialog"
       aria-modal="true"
     >

@@ -95,7 +95,7 @@ export default function InvitePage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Bhakti Challenge",
+          title: "Sadhana Challenge",
           text: data.shareText,
           url: data.url,
         });
@@ -111,10 +111,10 @@ export default function InvitePage() {
     ? `https://wa.me/?text=${encodeURIComponent(data.shareText)}`
     : "#";
   const telegramUrl = data
-    ? `https://t.me/share/url?url=${encodeURIComponent(data.url)}&text=${encodeURIComponent("Hare Krishna! Join me on Bhakti Challenge.")}`
+    ? `https://t.me/share/url?url=${encodeURIComponent(data.url)}&text=${encodeURIComponent("Hare Krishna! Join me on Sadhana Challenge.")}`
     : "#";
   const emailUrl = data
-    ? `mailto:?subject=${encodeURIComponent("Join me on Bhakti Challenge")}&body=${encodeURIComponent(data.shareText)}`
+    ? `mailto:?subject=${encodeURIComponent("Join me on Sadhana Challenge")}&body=${encodeURIComponent(data.shareText)}`
     : "#";
   const qrSrc = data
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(data.url)}`
@@ -134,7 +134,7 @@ export default function InvitePage() {
       <div>
         <PageHeader
           title="Invite Devotees"
-          subtitle="Share Bhakti Challenge with your sanga."
+          subtitle="Share Sadhana Challenge with your sanga."
           emoji="💌"
         />
         <GlassCard strong padding="p-6" className="mx-auto max-w-md text-center">
@@ -253,7 +253,7 @@ export default function InvitePage() {
             </div>
           )}
           <p className="mt-3 text-sm text-[var(--text-muted)]">
-            Scan to join Bhakti Challenge
+            Scan to join Sadhana Challenge
           </p>
         </GlassCard>
       </div>

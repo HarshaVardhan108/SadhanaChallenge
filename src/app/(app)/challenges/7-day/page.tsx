@@ -38,7 +38,7 @@ export default function SevenDayChallengePage() {
   return (
     <div>
       <PageHeader
-        title="7 Day Bhakti Challenge"
+        title="7 Day Sadhana Challenge"
         subtitle="Designed for beginners. Earn the Silver Lotus badge."
         emoji="🥈"
         action={

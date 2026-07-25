@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Bhakti Challenge",
-    short_name: "Bhakti",
+    name: "Sadhana Challenge",
+    short_name: "Sadhana",
     description:
       "A divine Krishna Consciousness spiritual competition platform. Grow in chanting, reading, hearing, and seva — inspired by Goloka Vrindavan.",
     start_url: "/dashboard",

@@ -1,4 +1,4 @@
-# Bhakti Challenge
+# Sadhana Challenge
 
 **Begin Your Journey Back Home, Back to Godhead**
 

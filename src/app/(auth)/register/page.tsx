@@ -124,7 +124,16 @@ function RegisterForm() {
       >
         <div className="glass-strong rounded-2xl p-5 shadow-2xl sm:rounded-3xl sm:p-8 md:p-10">
           <div className="mb-6 text-center sm:mb-8">
-            <span className="text-4xl">🪷</span>
+            <div className="mx-auto h-16 w-16 overflow-hidden rounded-2xl shadow-lg ring-2 ring-gold/50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icons/icon-192.png"
+                alt="Sadhana Challenge lotus"
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+              />
+            </div>
             <h1 className="mt-2 font-serif text-2xl font-bold text-krishna sm:text-3xl">
               Join the Spiritual Challenge
             </h1>

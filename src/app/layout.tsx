@@ -22,11 +22,12 @@ const devanagari = Noto_Serif_Devanagari({
 });
 
 export const metadata: Metadata = {
-  title: "Bhakti Challenge · Back Home, Back to Godhead",
+  title: "Sadhana Challenge · Back Home, Back to Godhead",
   description:
     "A divine Krishna Consciousness spiritual competition platform. Grow in chanting, reading, hearing, and seva — inspired by Goloka Vrindavan.",
   keywords: [
     "Krishna",
+    "Sadhana",
     "Bhakti",
     "ISKCON",
     "Japa",
@@ -34,21 +35,24 @@ export const metadata: Metadata = {
     "Spiritual Challenge",
     "Hare Krishna",
   ],
-  applicationName: "Bhakti Challenge",
+  applicationName: "Sadhana Challenge",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Bhakti Challenge",
+    title: "Sadhana Challenge",
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
     icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-48.png", sizes: "48x48", type: "image/png" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/icons/icon-192.png", type: "image/png" }],
   },
   other: {
     "mobile-web-app-capable": "yes",

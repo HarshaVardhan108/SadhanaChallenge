@@ -225,7 +225,7 @@ export async function markSubscriptionSent(
 
 /** Fixed daily reminder copy */
 export const DAILY_REMINDER = {
-  title: "Bhakti Challenge",
+  title: "Sadhana Challenge",
   body: "Hare Krishna PR, please complete your challenge",
   url: "/challenges",
 } as const;

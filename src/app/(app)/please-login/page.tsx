@@ -20,8 +20,15 @@ function PleaseLoginContent() {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-2 py-8">
       <GlassCard strong gold className="w-full text-center" padding="p-6 sm:p-8">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-krishna to-peacock text-3xl shadow-md">
-          🪷
+        <div className="mx-auto mb-4 h-16 w-16 overflow-hidden rounded-2xl shadow-md ring-2 ring-gold/40">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/icon-192.png"
+            alt="Sadhana Challenge lotus"
+            width={64}
+            height={64}
+            className="h-full w-full object-cover"
+          />
         </div>
         <p className="text-xs font-semibold uppercase tracking-wide text-peacock">
           Account required

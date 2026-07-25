@@ -1,5 +1,5 @@
-/* Bhakti Challenge service worker — offline shell + static caching */
-const CACHE_VERSION = "bhakti-v1";
+/* Sadhana Challenge service worker — offline shell + static caching */
+const CACHE_VERSION = "bhakti-v2-lotus";
 const PRECACHE = [
   "/",
   "/login",
@@ -8,6 +8,7 @@ const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png",
+  "/icons/favicon-32.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -117,7 +118,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let data = {
-    title: "Bhakti Challenge",
+    title: "Sadhana Challenge",
     body: "Hare Krishna PR, please complete your challenge",
     icon: "/icons/icon-192.png",
     url: "/challenges",
@@ -129,7 +130,7 @@ self.addEventListener("push", (event) => {
   }
   const icon = data.icon || "/icons/icon-192.png";
   event.waitUntil(
-    self.registration.showNotification(data.title || "Bhakti Challenge", {
+    self.registration.showNotification(data.title || "Sadhana Challenge", {
       body:
         data.body ||
         "Hare Krishna PR, please complete your challenge",

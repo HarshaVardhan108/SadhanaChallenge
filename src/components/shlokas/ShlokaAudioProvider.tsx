@@ -328,7 +328,7 @@ export function ShlokaAudioProvider({ children }: { children: ReactNode }) {
       ms.metadata = new MediaMetadata({
         title: formatMediaTitle(track),
         artist: track.bookName || "Bhagavad Gita",
-        album: "Bhakti Challenge · Shlokas",
+        album: "Sadhana Challenge · Shlokas",
         artwork: [
           {
             src: "/vrindavan-krishna.png",

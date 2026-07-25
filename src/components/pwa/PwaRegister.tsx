@@ -109,16 +109,23 @@ export function PwaRegister() {
         "fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[55] px-3 sm:bottom-4 sm:left-auto sm:right-4 sm:max-w-sm lg:bottom-6"
       )}
       role="dialog"
-      aria-label="Install Bhakti Challenge"
+      aria-label="Install Sadhana Challenge"
     >
       <div className="rounded-2xl border border-gold/50 bg-white/95 p-3 shadow-xl backdrop-blur-md sm:p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-krishna to-peacock text-lg font-bold text-gold shadow-md">
-            B
+          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl shadow-md ring-1 ring-gold/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              width={44}
+              height={44}
+              className="h-full w-full object-cover"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-serif text-sm font-bold text-krishna">
-              Install Bhakti Challenge
+              Install Sadhana Challenge
             </p>
             {isIos && !deferred ? (
               <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)]">

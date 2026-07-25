@@ -11,7 +11,7 @@ export function Footer() {
         </p>
 
         <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-          © 2026 Bhakti Challenge · All glories to Srila Prabhupada
+          © 2026 Sadhana Challenge · All glories to Srila Prabhupada
         </p>
       </div>
 

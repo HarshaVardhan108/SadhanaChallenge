@@ -113,11 +113,18 @@ export default function LoginPage() {
       >
         <div className="glass-strong rounded-2xl p-5 shadow-2xl sm:rounded-3xl sm:p-8 md:p-10">
           <div className="mb-6 text-center sm:mb-8">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-krishna to-peacock text-2xl shadow-lg sm:h-16 sm:w-16 sm:text-3xl">
-              🪷
+            <div className="mx-auto mb-3 h-16 w-16 overflow-hidden rounded-2xl shadow-lg ring-2 ring-gold/50 sm:h-20 sm:w-20 sm:rounded-3xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icons/icon-192.png"
+                alt="Sadhana Challenge lotus"
+                width={80}
+                height={80}
+                className="h-full w-full object-cover"
+              />
             </div>
             <h1 className="font-serif text-2xl font-bold text-krishna sm:text-3xl">
-              Bhakti Challenge
+              Sadhana Challenge
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
               Begin Your Journey Back Home,

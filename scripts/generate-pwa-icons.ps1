@@ -1,30 +1,26 @@
+# Resize lotus-source.jpg into PWA / favicon sizes.
+# Source: public/icons/lotus-source.jpg (pink lotus on Krishna blue)
+
 Add-Type -AssemblyName System.Drawing
 
-function Save-Icon([int]$s, [string]$relPath) {
+$sourceRel = "public\icons\lotus-source.jpg"
+if (-not (Test-Path $sourceRel)) {
+  Write-Error "Missing $sourceRel — place the lotus artwork there first."
+  exit 1
+}
+
+function Save-Sized([string]$inPath, [int]$s, [string]$outPath) {
+  $srcImg = [System.Drawing.Image]::FromFile((Resolve-Path $inPath))
   $bmp = New-Object System.Drawing.Bitmap $s, $s
   $g = [System.Drawing.Graphics]::FromImage($bmp)
-  $g.SmoothingMode = "AntiAlias"
-  $g.TextRenderingHint = "AntiAliasGridFit"
+  $g.InterpolationMode = "HighQualityBicubic"
+  $g.SmoothingMode = "HighQuality"
+  $g.PixelOffsetMode = "HighQuality"
+  $g.CompositingQuality = "HighQuality"
   $g.Clear([System.Drawing.Color]::FromArgb(255, 26, 79, 163))
+  $g.DrawImage($srcImg, 0, 0, $s, $s)
 
-  $gold = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 213, 79))
-  $m = [int]($s * 0.1)
-  $g.FillEllipse($gold, $m, $m, ($s - 2 * $m), ($s - 2 * $m))
-
-  $inner = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 26, 79, 163))
-  $m2 = [int]($s * 0.22)
-  $g.FillEllipse($inner, $m2, $m2, ($s - 2 * $m2), ($s - 2 * $m2))
-
-  $fontSize = [float]($s * 0.38)
-  $font = New-Object System.Drawing.Font "Arial", $fontSize, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
-  $sf = New-Object System.Drawing.StringFormat
-  $sf.Alignment = [System.Drawing.StringAlignment]::Center
-  $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
-  $y = [float]($s * 0.02)
-  $rect = New-Object System.Drawing.RectangleF 0, $y, $s, $s
-  $g.DrawString("B", $font, $gold, $rect, $sf)
-
-  $full = Join-Path (Get-Location) $relPath
+  $full = Join-Path (Get-Location) $outPath
   $dir = Split-Path $full -Parent
   if (-not (Test-Path $dir)) {
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
@@ -32,10 +28,18 @@ function Save-Icon([int]$s, [string]$relPath) {
   $bmp.Save($full, [System.Drawing.Imaging.ImageFormat]::Png)
   $g.Dispose()
   $bmp.Dispose()
-  $font.Dispose()
-  Write-Output "ok $relPath ($((Get-Item $full).Length) bytes)"
+  $srcImg.Dispose()
+  Write-Output "ok $outPath ($((Get-Item $full).Length) bytes)"
 }
 
-Save-Icon 192 "public\icons\icon-192.png"
-Save-Icon 512 "public\icons\icon-512.png"
-Save-Icon 180 "public\icons\apple-touch-icon.png"
+Save-Sized $sourceRel 32 "public\icons\favicon-32.png"
+Save-Sized $sourceRel 48 "public\icons\icon-48.png"
+Save-Sized $sourceRel 180 "public\icons\apple-touch-icon.png"
+Save-Sized $sourceRel 192 "public\icons\icon-192.png"
+Save-Sized $sourceRel 512 "public\icons\icon-512.png"
+
+# Next.js App Router static metadata icons
+Copy-Item "public\icons\icon-192.png" "src\app\icon.png" -Force
+Copy-Item "public\icons\apple-touch-icon.png" "src\app\apple-icon.png" -Force
+Copy-Item "public\icons\favicon-32.png" "public\favicon.ico" -Force
+Write-Output "ok src/app/icon.png, src/app/apple-icon.png, public/favicon.ico"

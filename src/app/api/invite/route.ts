@@ -31,7 +31,7 @@ export async function GET() {
       joined,
       points,
       recent,
-      shareText: `Hare Krishna! Join me on Bhakti Challenge — daily sadhana together.\n${url}`,
+      shareText: `Hare Krishna! Join me on Sadhana Challenge — daily sadhana together.\n${url}`,
     });
   } catch (e) {
     console.error("GET /api/invite", e);

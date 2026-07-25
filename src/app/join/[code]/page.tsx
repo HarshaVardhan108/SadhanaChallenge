@@ -113,7 +113,7 @@ export default function JoinInvitePage() {
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
                 <strong className="text-krishna">{inviterName}</strong> invited
                 you to join{" "}
-                <strong className="text-krishna">Bhakti Challenge</strong> —
+                <strong className="text-krishna">Sadhana Challenge</strong> —
                 walk together back home, back to Godhead.
               </p>
               <Button

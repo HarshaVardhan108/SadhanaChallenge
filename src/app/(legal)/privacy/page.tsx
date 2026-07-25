@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <h1 className="mt-4 font-serif text-3xl font-bold text-krishna">Privacy Policy</h1>
         <GlassCard className="mt-8 prose-sm space-y-4" strong>
           <p>
-            Bhakti Challenge respects your privacy. We collect only what is needed to support
+            Sadhana Challenge respects your privacy. We collect only what is needed to support
             your spiritual practice — name, email, temple affiliation, and sadhana progress.
           </p>
           <p>

@@ -14,7 +14,7 @@ export default function TermsPage() {
         <h1 className="mt-4 font-serif text-3xl font-bold text-krishna">Terms of Service</h1>
         <GlassCard className="mt-8 space-y-4 text-sm leading-relaxed" strong>
           <p>
-            By using Bhakti Challenge you agree to engage respectfully in the spirit of
+            By using Sadhana Challenge you agree to engage respectfully in the spirit of
             Krishna consciousness — encouraging chanting, reading, hearing, and seva.
           </p>
           <p>

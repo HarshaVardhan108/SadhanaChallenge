@@ -57,12 +57,19 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-gold/40 bg-white pt-[env(safe-area-inset-top)] shadow-sm">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4">
         <Link href="/dashboard" className="flex min-w-0 shrink-0 items-center gap-2">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-krishna to-peacock text-lg shadow-md">
-            🪷
+          <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl shadow-md ring-1 ring-gold/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              width={40}
+              height={40}
+              className="h-full w-full object-cover"
+            />
           </span>
           <div className="min-w-0">
             <p className="truncate font-serif text-sm font-bold leading-tight sm:text-base">
-              <span className="text-krishna">Bhakti</span>{" "}
+              <span className="text-krishna">Sadhana</span>{" "}
               <span className="text-gold">Challenge</span>
             </p>
             <p className="hidden text-[10px] tracking-wide text-peacock sm:block">
