@@ -17,7 +17,7 @@ npm run db:setup-app  # challenges, streaks, shlokas, settings
 npm run dev
 ```
 
-PostgreSQL (defaults):
+PostgreSQL (local defaults):
 
 ```
 DB_HOST=localhost
@@ -25,7 +25,44 @@ DB_PORT=5432
 DB_NAME=SadhanaChallenge
 DB_USER=postgres
 DB_PASSWORD=admin123
+AUTH_SECRET=change-me-in-production
 ```
+
+### Deploy (Vercel) — required for login
+
+Login talks to **Postgres** via the Node `pg` driver. After deploy, `localhost` is **not** your database — set a hosted connection on the host (Vercel → Project → Settings → Environment Variables):
+
+**Preferred (Supabase / Neon / any managed Postgres):**
+
+```
+DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+AUTH_SECRET=a-long-random-secret
+```
+
+Use the Supabase **Transaction pooler** URI (port **6543**) for serverless. For one-off schema setup from your machine, the **Session** or **Direct** URI is fine.
+
+Then seed the remote DB (from your laptop, with the same `DATABASE_URL`):
+
+```bash
+# PowerShell
+$env:DATABASE_URL="postgresql://..."
+npm run db:setup
+npm run db:setup-app
+```
+
+**Or discrete vars** (with SSL for remote hosts):
+
+```
+DB_HOST=db.xxxxx.supabase.co
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=your-db-password
+DB_SSL=true
+AUTH_SECRET=a-long-random-secret
+```
+
+Redeploy after saving env vars. Demo login after seed: `harsha@example.com` / `admin123`.
 
 Open [http://localhost:3000](http://localhost:3000) → `/login` → enter the Lotus Garden.
 

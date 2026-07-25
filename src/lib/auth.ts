@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { query, type DbUser } from "./db";
@@ -20,13 +21,25 @@ function secretKey() {
   return new TextEncoder().encode(secret);
 }
 
-/** Store password as plain text (column name remains password_hash). */
-export function storePassword(password: string) {
-  return password;
+function isBcryptHash(stored: string) {
+  return /^\$2[aby]\$\d{2}\$/.test(stored);
 }
 
-/** Plain-text password check (no hashing). */
-export function verifyPassword(password: string, stored: string) {
+/** Hash password with bcrypt before storing in password_hash. */
+export async function storePassword(password: string) {
+  return bcrypt.hash(password, 10);
+}
+
+/**
+ * Verify password against stored value.
+ * Supports bcrypt hashes and legacy plain-text rows (demo seeds).
+ */
+export async function verifyPassword(password: string, stored: string) {
+  if (!stored) return false;
+  if (isBcryptHash(stored)) {
+    return bcrypt.compare(password, stored);
+  }
+  // Legacy plain-text passwords (e.g. setup-auth-db demo users)
   return password === stored;
 }
 

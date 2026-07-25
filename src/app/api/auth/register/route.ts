@@ -7,7 +7,7 @@ import {
   normalizeIdentifier,
   toSessionUser,
 } from "@/lib/auth";
-import { query, type DbUser } from "@/lib/db";
+import { isDatabaseError, query, type DbUser } from "@/lib/db";
 import {
   ensureInviteSchema,
   ensureUserInviteCode,
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       if (inviter) invitedByUserId = inviter.id;
     }
 
-    const password_hash = storePassword(password);
+    const password_hash = await storePassword(password);
     const inserted = await query<DbUser>(
       `INSERT INTO users (
          full_name, email, phone, password_hash, temple, city, country, invited_by_user_id
@@ -126,6 +126,15 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error("register error", e);
+    if (isDatabaseError(e)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database unavailable. Set DATABASE_URL (or DB_HOST/DB_*) on the host to a reachable Postgres — localhost only works on your machine.",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Registration failed. Please try again." },
       { status: 500 }

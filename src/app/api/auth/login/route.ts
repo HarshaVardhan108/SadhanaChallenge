@@ -7,6 +7,7 @@ import {
   toSessionUser,
   verifyPassword,
 } from "@/lib/auth";
+import { isDatabaseError } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const ok = verifyPassword(password, user.password_hash);
+    const ok = await verifyPassword(password, user.password_hash);
     if (!ok) {
       return NextResponse.json(
         { error: "Invalid email/phone or password." },
@@ -59,6 +60,15 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error("login error", e);
+    if (isDatabaseError(e)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database unavailable. Set DATABASE_URL (or DB_HOST/DB_*) on the host to a reachable Postgres — localhost only works on your machine.",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Login failed. Please try again." },
       { status: 500 }

@@ -1,24 +1,53 @@
 /**
  * Creates app tables for challenges, streaks, shloka progress, user settings.
- * Uses same DB credentials as auth setup.
+ * Uses same DB credentials as auth setup (DATABASE_URL or DB_*).
  *
  *   npm run db:setup-app
  */
 import pg from "pg";
 
-const config = {
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT || 5432),
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "admin123",
-  database: process.env.DB_NAME || "SadhanaChallenge",
-};
+function buildConfig() {
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL;
 
+  if (connectionString) {
+    const useSsl =
+      process.env.DB_SSL !== "false" &&
+      (/supabase\.co|neon\.tech|amazonaws\.com|pooler\./i.test(connectionString) ||
+        process.env.NODE_ENV === "production" ||
+        process.env.DB_SSL === "true");
+    return {
+      connectionString,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+    };
+  }
+
+  const host = process.env.DB_HOST || "localhost";
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  return {
+    host,
+    port: Number(process.env.DB_PORT || 5432),
+    user: process.env.DB_USER || "postgres",
+    password: process.env.DB_PASSWORD || "admin123",
+    database: process.env.DB_NAME || "SadhanaChallenge",
+    ssl:
+      !isLocal || process.env.DB_SSL === "true"
+        ? { rejectUnauthorized: false }
+        : undefined,
+  };
+}
+
+const config = buildConfig();
 const client = new pg.Client(config);
 
 async function main() {
   await client.connect();
-  console.log("Connected to", config.database);
+  console.log(
+    "Connected to",
+    config.connectionString ? "(DATABASE_URL)" : config.database
+  );
 
   try {
     await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
