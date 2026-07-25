@@ -28,14 +28,26 @@ function buildPoolConfig(): PoolConfig {
     );
 
   if (connectionString) {
+    // Neon / serverless: drop channel_binding (breaks some runtimes) and
+    // use libpq-compatible SSL flags expected by `pg` on Vercel.
+    let url = connectionString
+      .replace(/&?channel_binding=require/gi, "")
+      .replace(/[?&]$/, "");
+    if (!/[?&]sslmode=/i.test(url)) {
+      url += (url.includes("?") ? "&" : "?") + "sslmode=require";
+    }
+    if (!/[?&]uselibpqcompat=/i.test(url)) {
+      url += "&uselibpqcompat=true";
+    }
+
     const useSsl =
       !forceNoSsl &&
       (forceSsl ||
-        looksRemote(connectionString) ||
+        looksRemote(url) ||
         process.env.NODE_ENV === "production");
 
     return {
-      connectionString,
+      connectionString: url,
       ssl: useSsl ? { rejectUnauthorized: false } : undefined,
       // Serverless: keep pool small; rely on external pooler when available
       max: Number(process.env.DB_POOL_MAX || 5),

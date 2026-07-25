@@ -9,6 +9,9 @@ import {
 } from "@/lib/auth";
 import { isDatabaseError } from "@/lib/db";
 
+/** Force Node.js runtime (pg + bcrypt need Node, not Edge). */
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
@@ -35,7 +38,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const ok = await verifyPassword(password, user.password_hash);
+    const stored =
+      user.password_hash == null ? "" : String(user.password_hash);
+    const ok = await verifyPassword(password, stored);
     if (!ok) {
       return NextResponse.json(
         { error: "Invalid email/phone or password." },
@@ -47,8 +52,6 @@ export async function POST(req: Request) {
     const token = await createSessionToken(session);
     const opts = await cookieOptions();
     if (body.remember === false) {
-      opts.maxAge = undefined as unknown as number;
-      // session cookie when not remembered
       delete (opts as { maxAge?: number }).maxAge;
     }
 
@@ -56,21 +59,29 @@ export async function POST(req: Request) {
       ok: true,
       user: session,
     });
-    res.cookies.set(AUTH_COOKIE, token, opts);
+    res.cookies.set(AUTH_COOKIE, token, {
+      httpOnly: opts.httpOnly,
+      secure: opts.secure,
+      sameSite: opts.sameSite,
+      path: opts.path,
+      ...(opts.maxAge != null ? { maxAge: opts.maxAge } : {}),
+    });
     return res;
   } catch (e) {
     console.error("login error", e);
+    const detail = e instanceof Error ? e.message : String(e);
     if (isDatabaseError(e)) {
       return NextResponse.json(
         {
           error:
-            "Database unavailable. Set DATABASE_URL (or DB_HOST/DB_*) on the host to a reachable Postgres — localhost only works on your machine.",
+            "Database unavailable. Check DATABASE_URL on Vercel points to Neon (not localhost).",
+          detail,
         },
         { status: 503 }
       );
     }
     return NextResponse.json(
-      { error: "Login failed. Please try again." },
+      { error: "Login failed. Please try again.", detail },
       { status: 500 }
     );
   }
