@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -18,9 +18,11 @@ import {
   Settings,
   X,
   LogIn,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isGuestUser } from "@/lib/guest";
+import { logoutClient } from "@/lib/logout";
 
 const tabs = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -45,8 +47,10 @@ const moreLinks = [
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setIsGuest(isGuestUser());
@@ -55,6 +59,19 @@ export function MobileTabBar() {
   const isTabActive = (href: string) => pathname.startsWith(href);
   const moreActive = moreLinks.some((l) => pathname.startsWith(l.href));
   const activeTabs = isGuest ? guestTabs : tabs;
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setMoreOpen(false);
+    try {
+      await logoutClient();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <>
@@ -90,7 +107,7 @@ export function MobileTabBar() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2 pb-4">
+              <div className="grid grid-cols-3 gap-2 pb-2">
                 {moreLinks.map((item) => {
                   const Icon = item.icon;
                   const active = pathname.startsWith(item.href);
@@ -112,6 +129,15 @@ export function MobileTabBar() {
                   );
                 })}
               </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm font-semibold text-rose-700 transition active:bg-rose-100 disabled:opacity-60"
+              >
+                <LogOut className="h-5 w-5" />
+                {loggingOut ? "Signing out…" : "Logout"}
+              </button>
             </motion.div>
           </>
         )}

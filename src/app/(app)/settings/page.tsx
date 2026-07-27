@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, LogIn } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, LogIn, LogOut } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { isGuestUser } from "@/lib/guest";
+import { logoutClient } from "@/lib/logout";
 import { PushReminder } from "@/components/pwa/PushReminder";
 
 // Notifications section temporarily disabled
@@ -68,6 +70,7 @@ function loadGoals(): { rounds: string; reading: string } {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
@@ -75,8 +78,21 @@ export default function SettingsPage() {
   const [reading, setReading] = useState("20");
   const [flute, setFlute] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logoutClient();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     const guest = isGuestUser();
@@ -526,6 +542,37 @@ export default function SettingsPage() {
             </button>
           </div>
         </GlassCard>
+
+        {!isGuest && (
+          <GlassCard>
+            <h2 className="font-serif text-lg font-bold text-krishna">
+              Session
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              Sign out of this device. You can log back in anytime with your
+              email or phone.
+            </p>
+            <Button
+              variant="danger"
+              size="sm"
+              className="mt-4"
+              disabled={loggingOut}
+              onClick={() => void handleLogout()}
+            >
+              {loggingOut ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing out…
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </>
+              )}
+            </Button>
+          </GlassCard>
+        )}
       </div>
     </div>
   );

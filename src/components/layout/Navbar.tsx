@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,9 +17,11 @@ import {
   Bell,
   BarChart3,
   LogIn,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isGuestUser } from "@/lib/guest";
+import { logoutClient } from "@/lib/logout";
 
 const mainNav = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -44,14 +46,29 @@ const guestMainNav = [
 /** Compact top bar on mobile; full nav on desktop (tabs handle mobile primary). */
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setIsGuest(isGuestUser());
   }, [pathname]);
 
   const navItems = isGuest ? guestMainNav : mainNav;
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setMoreOpen(false);
+    try {
+      await logoutClient();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-gold/40 bg-white pt-[env(safe-area-inset-top)] shadow-sm">
@@ -143,6 +160,16 @@ export function Navbar() {
                         </Link>
                       );
                     })}
+                    <div className="my-1 border-t border-gold/30" />
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {loggingOut ? "Signing out…" : "Logout"}
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
