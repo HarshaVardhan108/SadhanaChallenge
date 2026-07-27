@@ -44,7 +44,7 @@ Generate keys: `npm run push:vapid`
 
 1. Open **Notifications** or **Settings** in the app  
 2. Tap **Enable 9 PM reminder** → allow browser notifications  
-3. Subscription is stored in Postgres `push_subscriptions`  
+3. Subscription is stored in Convex `pushSubscriptions`  
 4. Cron hits `POST /api/push/send-daily` → Web Push delivered  
 
 ## Test manually

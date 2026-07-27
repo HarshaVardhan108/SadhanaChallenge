@@ -6,13 +6,15 @@ import {
   storePassword,
   normalizeIdentifier,
   toSessionUser,
+  convexUserToDbUser,
 } from "@/lib/auth";
-import { isDatabaseError, query, type DbUser } from "@/lib/db";
+import { isDatabaseError } from "@/lib/db";
+import { api, getConvexClient } from "@/lib/convex";
 import {
-  ensureInviteSchema,
   ensureUserInviteCode,
   findUserByInviteCode,
 } from "@/lib/invite";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export async function POST(req: Request) {
   try {
@@ -24,7 +26,6 @@ export async function POST(req: Request) {
       temple?: string;
       city?: string;
       country?: string;
-      /** Invite code from /join/{code} or ?ref= */
       inviteRef?: string;
       ref?: string;
     };
@@ -47,19 +48,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const email = emailRaw
-      ? normalizeIdentifier(emailRaw).value
-      : null;
-    const phone = phoneRaw
-      ? normalizeIdentifier(phoneRaw).value
-      : null;
+    const email = emailRaw ? normalizeIdentifier(emailRaw).value : null;
+    const phone = phoneRaw ? normalizeIdentifier(phoneRaw).value : null;
+
+    const convex = getConvexClient();
 
     if (email) {
-      const exists = await query(
-        `SELECT id FROM users WHERE lower(email) = $1`,
-        [email]
-      );
-      if (exists.rows.length) {
+      const exists = await convex.query(api.users.findByEmail, { email });
+      if (exists) {
         return NextResponse.json(
           { error: "Email already registered." },
           { status: 409 }
@@ -67,11 +63,10 @@ export async function POST(req: Request) {
       }
     }
     if (phone) {
-      const exists = await query(
-        `SELECT id FROM users WHERE regexp_replace(COALESCE(phone,''), '\\D', '', 'g') = $1`,
-        [phone]
-      );
-      if (exists.rows.length) {
+      const exists = await convex.query(api.users.findByPhoneDigits, {
+        phoneDigits: phone,
+      });
+      if (exists) {
         return NextResponse.json(
           { error: "Phone already registered." },
           { status: 409 }
@@ -79,43 +74,32 @@ export async function POST(req: Request) {
       }
     }
 
-    await ensureInviteSchema();
-
-    // Resolve optional inviter from invite code
-    let invitedByUserId: string | null = null;
+    let invitedByUserId: Id<"users"> | null = null;
     const ref = (body.inviteRef || body.ref || "").trim();
     if (ref) {
       const inviter = await findUserByInviteCode(ref);
-      if (inviter) invitedByUserId = inviter.id;
+      if (inviter) invitedByUserId = inviter.id as Id<"users">;
     }
 
-    const password_hash = await storePassword(password);
-    const inserted = await query<DbUser>(
-      `INSERT INTO users (
-         full_name, email, phone, password_hash, temple, city, country, invited_by_user_id
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
-      [
-        fullName,
-        email,
-        phone,
-        password_hash,
-        body.temple || "",
-        body.city || "",
-        body.country || "India",
-        invitedByUserId,
-      ]
-    );
+    const passwordHash = await storePassword(password);
+    const user = await convex.mutation(api.users.register, {
+      fullName,
+      email,
+      phone,
+      passwordHash,
+      temple: body.temple || "",
+      city: body.city || "",
+      country: body.country || "India",
+      invitedByUserId,
+    });
 
-    const user = inserted.rows[0];
-    // Give the new user their own invite code immediately
     try {
       await ensureUserInviteCode(user.id);
     } catch {
       /* non-fatal */
     }
-    const session = toSessionUser(user);
+
+    const session = toSessionUser(convexUserToDbUser(user));
     const token = await createSessionToken(session);
     const res = NextResponse.json({
       ok: true,
@@ -126,11 +110,24 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error("register error", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("EMAIL_EXISTS")) {
+      return NextResponse.json(
+        { error: "Email already registered." },
+        { status: 409 }
+      );
+    }
+    if (msg.includes("PHONE_EXISTS")) {
+      return NextResponse.json(
+        { error: "Phone already registered." },
+        { status: 409 }
+      );
+    }
     if (isDatabaseError(e)) {
       return NextResponse.json(
         {
           error:
-            "Database unavailable. Set DATABASE_URL (or DB_HOST/DB_*) on the host to a reachable Postgres — localhost only works on your machine.",
+            "Convex unavailable. Set NEXT_PUBLIC_CONVEX_URL (run `npx convex dev`).",
         },
         { status: 503 }
       );

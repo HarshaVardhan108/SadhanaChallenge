@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Libre_Baskerville, Poppins, Noto_Serif_Devanagari } from "next/font/google";
+import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import "./globals.css";
 
@@ -86,8 +87,10 @@ export default function RootLayout({
         className="min-h-full font-sans text-[var(--text-primary)]"
         suppressHydrationWarning
       >
-        {children}
-        <PwaRegister />
+        <ConvexClientProvider>
+          {children}
+          <PwaRegister />
+        </ConvexClientProvider>
       </body>
     </html>
   );

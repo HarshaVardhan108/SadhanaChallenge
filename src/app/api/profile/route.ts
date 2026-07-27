@@ -5,14 +5,15 @@ import {
   createSessionToken,
   getSession,
   toSessionUser,
+  convexUserToDbUser,
   type SessionUser,
 } from "@/lib/auth";
-import { query, type DbUser } from "@/lib/db";
+import { api, getConvexClient } from "@/lib/convex";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 /**
  * PATCH /api/profile
- * Update the logged-in user's profile fields (name, email, temple, city, country).
- * Refreshes the session cookie so /api/auth/me and the UI stay in sync.
+ * Update the logged-in user's profile fields.
  */
 export async function PATCH(req: Request) {
   try {
@@ -75,13 +76,11 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // Unique email check (other users)
+    const convex = getConvexClient();
+
     if (email) {
-      const clash = await query<{ id: string }>(
-        `SELECT id FROM users WHERE lower(email) = $1 AND id <> $2 LIMIT 1`,
-        [email, session.id]
-      );
-      if (clash.rows[0]) {
+      const clash = await convex.query(api.users.findByEmail, { email });
+      if (clash && clash.id !== session.id) {
         return NextResponse.json(
           { error: "That email is already used by another account." },
           { status: 409 }
@@ -89,30 +88,17 @@ export async function PATCH(req: Request) {
       }
     }
 
-    const updated = await query<DbUser>(
-      `UPDATE users
-       SET full_name = $1,
-           email = $2,
-           phone = COALESCE($3, phone),
-           temple = $4,
-           city = $5,
-           country = $6,
-           updated_at = NOW()
-       WHERE id = $7
-       RETURNING *`,
-      [fullName, email, phone, temple, city, country, session.id]
-    );
+    const row = await convex.mutation(api.users.updateProfile, {
+      id: session.id as Id<"users">,
+      fullName,
+      email,
+      phone,
+      temple,
+      city,
+      country,
+    });
 
-    const row = updated.rows[0];
-    if (!row) {
-      return NextResponse.json(
-        { error: "User not found." },
-        { status: 404 }
-      );
-    }
-
-    const nextUser: SessionUser = toSessionUser(row);
-    // Preserve avatar from session if DB column empty mid-migration
+    const nextUser: SessionUser = toSessionUser(convexUserToDbUser(row));
     if (!nextUser.avatarUrl && session.avatarUrl) {
       nextUser.avatarUrl = session.avatarUrl;
     }
@@ -125,7 +111,7 @@ export async function PATCH(req: Request) {
   } catch (e) {
     console.error("profile update error", e);
     const msg = e instanceof Error ? e.message : "";
-    if (msg.includes("unique") || msg.includes("duplicate")) {
+    if (msg.includes("EMAIL_EXISTS") || msg.includes("unique")) {
       return NextResponse.json(
         { error: "Email or phone is already in use." },
         { status: 409 }

@@ -1,5 +1,6 @@
 import webpush from "web-push";
-import { query } from "@/lib/db";
+import { api, getConvexClient } from "@/lib/convex";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export type PushSubscriptionJSON = {
   endpoint: string;
@@ -61,51 +62,34 @@ export async function savePushSubscription(opts: {
   const hour = Number(opts.hour ?? process.env.PUSH_HOUR ?? 21);
   const enabled = opts.enabled !== false;
 
-  await query(
-    `INSERT INTO push_subscriptions
-      (user_id, endpoint, p256dh, auth, enabled, timezone, hour, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-     ON CONFLICT (endpoint) DO UPDATE SET
-       user_id = COALESCE(EXCLUDED.user_id, push_subscriptions.user_id),
-       p256dh = EXCLUDED.p256dh,
-       auth = EXCLUDED.auth,
-       enabled = EXCLUDED.enabled,
-       timezone = EXCLUDED.timezone,
-       hour = EXCLUDED.hour,
-       updated_at = NOW()`,
-    [
-      opts.userId || null,
-      subscription.endpoint,
-      subscription.keys.p256dh,
-      subscription.keys.auth,
-      enabled,
-      timezone,
-      hour,
-    ]
-  );
+  const convex = getConvexClient();
+  await convex.mutation(api.push.saveSubscription, {
+    userId: (opts.userId as Id<"users"> | null) || null,
+    endpoint: subscription.endpoint,
+    p256dh: subscription.keys.p256dh,
+    auth: subscription.keys.auth,
+    enabled,
+    timezone,
+    hour,
+  });
 }
 
 export async function removePushSubscription(endpoint: string): Promise<void> {
-  await query(`DELETE FROM push_subscriptions WHERE endpoint = $1`, [endpoint]);
+  const convex = getConvexClient();
+  await convex.mutation(api.push.removeSubscription, { endpoint });
 }
 
 export async function setPushEnabled(
   endpoint: string,
   enabled: boolean
 ): Promise<void> {
-  await query(
-    `UPDATE push_subscriptions SET enabled = $1, updated_at = NOW() WHERE endpoint = $2`,
-    [enabled, endpoint]
-  );
+  const convex = getConvexClient();
+  await convex.mutation(api.push.setEnabled, { endpoint, enabled });
 }
 
 export async function listEnabledSubscriptions(): Promise<DbPushSubscription[]> {
-  const r = await query<DbPushSubscription>(
-    `SELECT id, user_id, endpoint, p256dh, auth, enabled, timezone, hour, last_sent_date
-     FROM push_subscriptions
-     WHERE enabled = TRUE`
-  );
-  return r.rows;
+  const convex = getConvexClient();
+  return await convex.query(api.push.listEnabled, {});
 }
 
 /**
@@ -136,7 +120,6 @@ export function localHourInTz(timeZone: string, date = new Date()): number {
       hour: "numeric",
       hour12: false,
     }).format(date);
-    // Some engines return "24" for midnight
     const h = Number(hourStr);
     return h === 24 ? 0 : h;
   } catch {
@@ -159,20 +142,8 @@ export function pushLogoUrl(): string {
 
 /** True if user created or joined at least one challenge. */
 export async function userHasAnyChallenges(userId: string): Promise<boolean> {
-  const r = await query<{ ok: boolean }>(
-    `SELECT (
-       EXISTS (
-         SELECT 1 FROM challenge_participants
-         WHERE user_id = $1 AND accepted = TRUE
-       )
-       OR EXISTS (
-         SELECT 1 FROM challenges
-         WHERE created_by_user_id = $1
-       )
-     ) AS ok`,
-    [userId]
-  );
-  return Boolean(r.rows[0]?.ok);
+  const convex = getConvexClient();
+  return await convex.query(api.challenges.userHasAnyChallenges, { userId });
 }
 
 export async function sendPushToSubscription(
@@ -203,7 +174,6 @@ export async function sendPushToSubscription(
     return { ok: true };
   } catch (e: unknown) {
     const err = e as { statusCode?: number; message?: string };
-    // 404 / 410 = subscription expired
     if (err.statusCode === 404 || err.statusCode === 410) {
       await removePushSubscription(sub.endpoint);
       return { ok: false, gone: true, error: err.message };
@@ -217,10 +187,11 @@ export async function markSubscriptionSent(
   id: string,
   dateKey: string
 ): Promise<void> {
-  await query(
-    `UPDATE push_subscriptions SET last_sent_date = $1, updated_at = NOW() WHERE id = $2`,
-    [dateKey, id]
-  );
+  const convex = getConvexClient();
+  await convex.mutation(api.push.markSent, {
+    id: id as Id<"pushSubscriptions">,
+    dateKey,
+  });
 }
 
 /** Fixed daily reminder copy */
@@ -257,7 +228,6 @@ export async function sendDailyReminders(now = new Date()): Promise<{
     const hourNow = localHourInTz(tz, now);
     const dateKey = localDateInTz(tz, now);
 
-    // Only send during the target hour, once per local day
     if (hourNow !== targetHour) {
       skipped += 1;
       continue;
@@ -267,7 +237,6 @@ export async function sendDailyReminders(now = new Date()): Promise<{
       continue;
     }
 
-    // Reminder only if the devotee has any challenge
     if (!sub.user_id) {
       noChallenge += 1;
       continue;

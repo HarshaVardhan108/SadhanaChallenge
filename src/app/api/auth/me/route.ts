@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
-import { getSession, toSessionUser } from "@/lib/auth";
-import { query, type DbUser } from "@/lib/db";
+import {
+  getSession,
+  toSessionUser,
+  convexUserToDbUser,
+} from "@/lib/auth";
+import { api, getConvexClient } from "@/lib/convex";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
-/** Return the current session user, refreshed from the database when possible. */
+/** Return the current session user, refreshed from Convex when possible. */
 export async function GET() {
   const session = await getSession();
   if (!session) {
@@ -10,13 +15,12 @@ export async function GET() {
   }
 
   try {
-    const r = await query<DbUser>(
-      `SELECT * FROM users WHERE id = $1 LIMIT 1`,
-      [session.id]
-    );
-    const row = r.rows[0];
+    const convex = getConvexClient();
+    const row = await convex.query(api.users.getById, {
+      id: session.id as Id<"users">,
+    });
     if (row) {
-      const user = toSessionUser(row);
+      const user = toSessionUser(convexUserToDbUser(row));
       if (!user.avatarUrl && session.avatarUrl) {
         user.avatarUrl = session.avatarUrl;
       }

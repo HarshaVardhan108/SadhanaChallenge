@@ -9,7 +9,6 @@ import {
 } from "@/lib/auth";
 import { isDatabaseError } from "@/lib/db";
 
-/** Force Node.js runtime (pg + bcrypt need Node, not Edge). */
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
@@ -74,7 +73,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "Database unavailable. Check DATABASE_URL on Vercel points to Neon (not localhost).",
+            "Convex unavailable. Check NEXT_PUBLIC_CONVEX_URL is set (run `npx convex dev`).",
           detail,
         },
         { status: 503 }

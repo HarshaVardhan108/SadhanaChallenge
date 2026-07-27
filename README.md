@@ -12,66 +12,51 @@ A premium, highly animated Krishna Consciousness spiritual competition website i
 
 ```bash
 npm install
-npm run db:setup      # users table
-npm run db:setup-app  # challenges, streaks, shlokas, settings
-npm run dev
+npx convex dev          # link Convex project + write NEXT_PUBLIC_CONVEX_URL
+# (keep convex dev running in one terminal)
+
+npm run convex:seed     # optional demo users
+npm run dev             # Next.js on :3000
 ```
 
-PostgreSQL (local defaults):
+### Environment
 
 ```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=SadhanaChallenge
-DB_USER=postgres
-DB_PASSWORD=admin123
+# Convex (required for login + app data)
+NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
+
+# Session JWT
 AUTH_SECRET=change-me-in-production
+
+# Supabase Storage only (audio, avatars, intro media) — not the database
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-### Deploy (Vercel) — required for login
+Logged-in data (users, challenges, streaks, shloka progress, settings, push subscriptions) is stored in **Convex**. Guests still use device-local cache. Media files remain on **Supabase Storage**.
 
-Login talks to **Postgres** via the Node `pg` driver. After deploy, `localhost` is **not** your database — set a hosted connection on the host (Vercel → Project → Settings → Environment Variables):
-
-**Preferred (Supabase / Neon / any managed Postgres):**
-
-```
-DATABASE_URL=postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
-AUTH_SECRET=a-long-random-secret
-```
-
-Use the Supabase **Transaction pooler** URI (port **6543**) for serverless. For one-off schema setup from your machine, the **Session** or **Direct** URI is fine.
-
-Then seed the remote DB (from your laptop, with the same `DATABASE_URL`):
-
-```bash
-# PowerShell
-$env:DATABASE_URL="postgresql://..."
-npm run db:setup
-npm run db:setup-app
-```
-
-**Or discrete vars** (with SSL for remote hosts):
-
-```
-DB_HOST=db.xxxxx.supabase.co
-DB_PORT=5432
-DB_NAME=postgres
-DB_USER=postgres
-DB_PASSWORD=your-db-password
-DB_SSL=true
-AUTH_SECRET=a-long-random-secret
-```
-
-Redeploy after saving env vars. Demo login after seed: `harsha@example.com` / `admin123`.
+Demo login after seed: `harsha@example.com` / `admin123`.
 
 Open [http://localhost:3000](http://localhost:3000) → `/login` → enter the Lotus Garden.
-
-Logged-in data (challenges, streaks, shloka progress, settings) is stored in **PostgreSQL**. Guests still use device-local cache.
 
 ```bash
 npm run build
 npm run start
 ```
+
+### Deploy (Vercel)
+
+1. Run `npx convex deploy` (or connect the Convex GitHub integration).
+2. Set on Vercel:
+
+```
+NEXT_PUBLIC_CONVEX_URL=https://your-prod-deployment.convex.cloud
+AUTH_SECRET=a-long-random-secret
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+Redeploy after saving env vars.
 
 ### Progressive Web App (PWA)
 
@@ -88,7 +73,6 @@ Serve over **HTTPS** (or `localhost`) for install + SW registration.
 
 ```bash
 npm run push:vapid      # generate VAPID + CRON_SECRET → add to .env.local
-npm run db:setup-app    # creates push_subscriptions table
 ```
 
 Users enable reminders under **Notifications** or **Settings**.  
@@ -115,28 +99,16 @@ Cron (Supabase Edge Function or Vercel Cron) hits `POST /api/push/send-daily` ho
 
 ---
 
-## Frontend stack (implemented)
+## Stack
 
 | Tech | Role |
 |------|------|
-| **Next.js 16** + React + TypeScript | App Router UI |
+| **Next.js 16** + React + TypeScript | App Router UI + API routes |
+| **Convex** | Database (users, challenges, streaks, settings, push) |
+| **Supabase Storage** | Audio, avatars, intro media |
+| **JWT cookies** (`jose` + `bcryptjs`) | Session auth |
 | **Tailwind CSS v4** | Theme & layout |
-| **Framer Motion** | Page/card transitions |
-| **GSAP** | Offering glow celebrations |
-| **Three.js** | Subtle divine particle field |
-| **Lottie** | Blooming lotus illustrations |
-| **Lucide** | Icons |
-
-### Planned backend (not wired yet)
-
-| Tech | Role |
-|------|------|
-| ASP.NET Core Web API **or** Node.js | REST API |
-| PostgreSQL | Users, progress, community |
-| Firebase Auth / Google OAuth | Login |
-| Firebase Cloud Messaging | Push reminders |
-| Azure Blob / Firebase Storage | Audio, images |
-| Vercel + Azure | Hosting |
+| **Framer Motion / GSAP / Three.js / Lottie** | Motion & ambient |
 
 ---
 
@@ -148,46 +120,29 @@ Cron (Supabase Edge Function or Vercel Cron) hits `POST /api/push/send-daily` ho
 ### App
 | Path | Feature |
 |------|---------|
-| `/dashboard` | Lotus Garden + daily inspiration |
-| `/challenges` | Hub |
-| `/challenges/7-day` | Beginner · **Silver Lotus** |
-| `/challenges/21-day` | Advanced · blooming progress |
-| `/challenges/custom` | Create your own |
-| `/teams` | Team Radha, Govinda, Mayapur… |
-| `/hearing` | Spotify-style player |
-| `/shlokas` | Sanskrit + 700+ progress |
-| `/reading` | Book trackers |
-| `/leaderboard` | Daily → Global |
-| `/community` | Haribol / Jai Prabhupada |
-| `/achievements` | Collectible badges |
-| `/invite` | Link, QR, WhatsApp… |
-| `/analytics` | Charts + heatmap |
-| `/notifications` | Mangala → quotes |
-| `/profile` · `/settings` · `/admin` | Account & CMS |
+| `/dashboard` | Home |
+| `/challenges` | Challenges list + create |
+| `/shlokas` | Shloka library + progress |
+| `/profile` · `/settings` | Account |
+| `/notifications` | Push reminders |
+| `/invite` | Personal invite link |
+| `/admin` | Admin |
 
-### Atmosphere
-- Floating petals, clouds, birds, butterflies, peacocks, cows  
-- Yamuna river band, temple silhouettes, light rays, sparkles  
-- Optional **flute ambience** button (bottom-right)  
-- **Offering toast** when tasks are completed  
+### Health
 
-### Footer
-Maha-mantra · social · Contact · Privacy · Terms · Donate · lotus / peacock / temple art
+`GET /api/auth/health` — checks Convex connectivity + JWT signing.
 
 ---
 
-## Project structure
+## Convex backend
 
-```
-src/
-  app/           # Routes (auth, app, legal)
-  components/
-    ambient/     # Vrindavan bg, Three.js, Lottie, flute, offering toast
-    layout/      # Navbar, Footer, AppShell
-    ui/          # Glass cards, buttons, lotus progress…
-  lib/           # Mock data, GSAP helpers, utils
-```
+See `convex/README.md`. Schema tables:
 
----
+- `users`
+- `challenges` / `challengeParticipants`
+- `dailyStreaks`
+- `userShlokaCompletions`
+- `userSettings`
+- `pushSubscriptions`
 
-*All glories to Srila Prabhupada* 🙏
+Next.js API routes call Convex via `ConvexHttpClient` (`src/lib/convex.ts`). Client components can use `useQuery` / `useMutation` through `ConvexClientProvider`.

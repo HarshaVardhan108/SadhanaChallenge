@@ -1,5 +1,5 @@
 /**
- * Client helpers to load/save challenges via /api (PostgreSQL).
+ * Client helpers to load/save challenges via /api (Convex-backed).
  * Falls back to localStorage only for guests / offline.
  */
 import type { SavedChallenge } from "@/lib/challenges";

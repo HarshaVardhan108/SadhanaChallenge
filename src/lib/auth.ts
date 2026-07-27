@@ -1,7 +1,8 @@
 import * as bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { query, type DbUser } from "./db";
+import type { DbUser } from "./db";
+import { api, getConvexClient } from "./convex";
 
 export const AUTH_COOKIE = "bhakti_session";
 
@@ -25,7 +26,7 @@ function isBcryptHash(stored: string) {
   return /^\$2[aby]\$\d{2}\$/.test(stored);
 }
 
-/** Hash password with bcrypt before storing in password_hash. */
+/** Hash password with bcrypt before storing. */
 export async function storePassword(password: string) {
   return bcrypt.hash(password, 10);
 }
@@ -39,7 +40,6 @@ export async function verifyPassword(password: string, stored: string) {
   if (isBcryptHash(stored)) {
     return bcrypt.compare(password, stored);
   }
-  // Legacy plain-text passwords (e.g. setup-auth-db demo users)
   return password === stored;
 }
 
@@ -101,6 +101,37 @@ export function toSessionUser(row: DbUser): SessionUser {
   };
 }
 
+/** Map Convex PublicUser → DbUser */
+export function convexUserToDbUser(u: {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  temple: string | null;
+  city: string | null;
+  country: string | null;
+  avatarUrl: string | null;
+  inviteCode?: string | null;
+  invitedByUserId?: string | null;
+  createdAt?: number;
+  passwordHash: string;
+}): DbUser {
+  return {
+    id: u.id,
+    full_name: u.fullName,
+    email: u.email,
+    phone: u.phone,
+    password_hash: u.passwordHash,
+    temple: u.temple,
+    city: u.city,
+    country: u.country,
+    avatar_url: u.avatarUrl,
+    invite_code: u.inviteCode ?? null,
+    invited_by_user_id: u.invitedByUserId ?? null,
+    created_at: u.createdAt ? new Date(u.createdAt) : new Date(),
+  };
+}
+
 /** Normalize login identifier: email or digits-only phone */
 export function normalizeIdentifier(raw: string): {
   kind: "email" | "phone";
@@ -120,23 +151,17 @@ export async function findUserByIdentifier(
   const { kind, value } = normalizeIdentifier(identifier);
   if (!value) return null;
 
+  const convex = getConvexClient();
+
   if (kind === "email") {
-    const r = await query<DbUser>(
-      `SELECT * FROM users WHERE lower(email) = $1 LIMIT 1`,
-      [value]
-    );
-    return r.rows[0] ?? null;
+    const u = await convex.query(api.users.findByEmail, { email: value });
+    return u ? convexUserToDbUser(u) : null;
   }
 
-  // Match phone with or without country code tails
-  const r = await query<DbUser>(
-    `SELECT * FROM users
-     WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = $1
-        OR regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') LIKE $2
-     LIMIT 1`,
-    [value, `%${value.slice(-10)}`]
-  );
-  return r.rows[0] ?? null;
+  const u = await convex.query(api.users.findByPhoneDigits, {
+    phoneDigits: value,
+  });
+  return u ? convexUserToDbUser(u) : null;
 }
 
 export async function cookieOptions() {

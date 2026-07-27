@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { api, getConvexClient } from "@/lib/convex";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 export type InviteUser = {
   id: string;
@@ -22,36 +23,16 @@ export async function GET() {
   }
 
   try {
-    const result = await query<{
-      id: string;
-      full_name: string;
-      email: string | null;
-      phone: string | null;
-      temple: string | null;
-      city: string | null;
-    }>(
-      `SELECT id, full_name, email, phone, temple, city
-       FROM users
-       WHERE id::text <> $1
-       ORDER BY lower(full_name) ASC, lower(COALESCE(email, '')) ASC
-       LIMIT 200`,
-      [session.id]
-    );
-
-    const users: InviteUser[] = result.rows.map((row) => ({
-      id: row.id,
-      fullName: (row.full_name || "").trim() || "Devotee",
-      email: row.email,
-      phone: row.phone,
-      temple: row.temple,
-      city: row.city,
-    }));
+    const convex = getConvexClient();
+    const users = (await convex.query(api.users.listForInvites, {
+      excludeUserId: session.id as Id<"users">,
+    })) as InviteUser[];
 
     return NextResponse.json({ users });
   } catch (err) {
     console.error("GET /api/users", err);
     return NextResponse.json(
-      { error: "Could not load users. Is the database running?", users: [] },
+      { error: "Could not load users. Is Convex configured?", users: [] },
       { status: 503 }
     );
   }

@@ -5,7 +5,7 @@ import {
   createSessionToken,
   getSession,
 } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { api, getConvexClient } from "@/lib/convex";
 import {
   MEDIA_BUCKET,
   PROFILES_FOLDER,
@@ -13,6 +13,7 @@ import {
   profileAvatarPath,
   publicObjectUrl,
 } from "@/lib/supabase";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED = new Set([
@@ -111,15 +112,13 @@ export async function POST(req: Request) {
     const avatarUrl = `${publicObjectUrl(MEDIA_BUCKET, path)}?t=${Date.now()}`;
 
     try {
-      await query(
-        `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2`,
-        [avatarUrl, session.id]
-      );
+      const convex = getConvexClient();
+      await convex.mutation(api.users.setAvatarUrl, {
+        id: session.id as Id<"users">,
+        avatarUrl,
+      });
     } catch (dbErr) {
-      console.warn(
-        "avatar_url column missing or DB update failed — URL still returned",
-        dbErr
-      );
+      console.warn("avatar URL Convex update failed — URL still returned", dbErr);
     }
 
     const nextUser = { ...session, avatarUrl };
