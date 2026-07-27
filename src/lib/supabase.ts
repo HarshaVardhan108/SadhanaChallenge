@@ -71,6 +71,30 @@ export function createSupabaseClient(): SupabaseClient | null {
   return createClient(url, key);
 }
 
+/**
+ * Server-only client with the secret / service-role key.
+ * Bypasses Storage RLS — required for avatar uploads because this app
+ * uses custom session auth, not Supabase Auth (auth.uid() is always null).
+ *
+ * Set SUPABASE_SECRET_KEY (new) or SUPABASE_SERVICE_ROLE_KEY (legacy JWT).
+ * Never expose this key to the browser.
+ */
+export function createSupabaseAdminClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.warn(
+      "Supabase admin env missing (SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY)"
+    );
+    return null;
+  }
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 /** Public object URL (works when the bucket is public). */
 export function publicObjectUrl(bucket: string, path: string): string {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;

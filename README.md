@@ -31,6 +31,8 @@ AUTH_SECRET=change-me-in-production
 # Supabase Storage only (audio, avatars, intro media) — not the database
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+# Required for profile photo uploads (server-only service role / secret key)
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
 Logged-in data (users, challenges, streaks, shloka progress, settings, push subscriptions) is stored in **Convex**. Guests still use device-local cache. Media files remain on **Supabase Storage**.
@@ -54,6 +56,7 @@ NEXT_PUBLIC_CONVEX_URL=https://your-prod-deployment.convex.cloud
 AUTH_SECRET=a-long-random-secret
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+SUPABASE_SECRET_KEY=...   # service role — needed for profile photo uploads
 ```
 
 Redeploy after saving env vars.

@@ -9,7 +9,7 @@ import { api, getConvexClient } from "@/lib/convex";
 import {
   MEDIA_BUCKET,
   PROFILES_FOLDER,
-  createSupabaseClient,
+  createSupabaseAdminClient,
   profileAvatarPath,
   publicObjectUrl,
 } from "@/lib/supabase";
@@ -71,10 +71,15 @@ export async function POST(req: Request) {
     const path = profileAvatarPath(session.id, ext);
     const userFolder = `${PROFILES_FOLDER}/${session.id}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    const supabase = createSupabaseClient();
+    // Must use service-role key — anon key hits Storage RLS ("new row violates
+    // row-level security policy") because we don't use Supabase Auth sessions.
+    const supabase = createSupabaseAdminClient();
     if (!supabase) {
       return NextResponse.json(
-        { error: "Supabase is not configured on the server." },
+        {
+          error:
+            "Avatar uploads need SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) on the server.",
+        },
         { status: 503 }
       );
     }
@@ -99,12 +104,13 @@ export async function POST(req: Request) {
 
     if (uploadError) {
       console.error("avatar upload", uploadError);
+      const msg = uploadError.message || "Upload failed.";
+      const rls =
+        /row-level security|RLS|policy/i.test(msg)
+          ? ` Set SUPABASE_SECRET_KEY (service role) on the server, or allow INSERT on bucket "${MEDIA_BUCKET}" / "${PROFILES_FOLDER}/".`
+          : "";
       return NextResponse.json(
-        {
-          error:
-            uploadError.message ||
-            `Upload failed. Allow INSERT on bucket "${MEDIA_BUCKET}" folder "${PROFILES_FOLDER}/".`,
-        },
+        { error: `${msg}${rls}` },
         { status: 502 }
       );
     }
