@@ -195,11 +195,6 @@ export default function LoginPage() {
             Continue as Guest
           </Button>
 
-          <div className="mt-6 rounded-xl bg-cream px-3 py-2 text-center text-[11px] text-[var(--text-muted)] sm:text-xs">
-            Demo: <strong>harsha@example.com</strong> or <strong>9705822395</strong>
-            <br />
-            Password: <strong>admin123</strong>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-[var(--text-muted)]">New to the spiritual journey?</p>
