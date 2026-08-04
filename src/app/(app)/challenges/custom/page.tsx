@@ -113,7 +113,10 @@ export default function CustomChallengePage() {
       setToast(true);
       setTimeout(() => {
         setToast(false);
-        router.push(challengePath(payload.id));
+        const path = challengePath(payload.id);
+        router.push(
+          visibility === "public" ? `${path}?share=1` : path
+        );
       }, 1600);
     } catch {
       /* ignore */
@@ -333,7 +336,11 @@ export default function CustomChallengePage() {
 
       <OfferingToast
         show={toast}
-        message="Custom challenge created — Hare Krishna!"
+        message={
+          visibility === "public"
+            ? "Public challenge created — copy your share link!"
+            : "Custom challenge created — Hare Krishna!"
+        }
       />
     </div>
   );

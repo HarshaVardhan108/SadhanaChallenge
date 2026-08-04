@@ -76,7 +76,10 @@ export function PushReminder({ className }: { className?: string }) {
         timezone?: string;
       };
       if (!cfgRes.ok || !cfg.publicKey) {
-        setError(cfg.error || "Push is not configured on the server.");
+        setError(
+          cfg.error ||
+            "Push is not configured on the server (missing VAPID keys in deployment env)."
+        );
         return;
       }
       if (cfg.hour != null) setHour(cfg.hour);

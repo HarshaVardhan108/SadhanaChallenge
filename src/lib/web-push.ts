@@ -25,11 +25,18 @@ export type DbPushSubscription = {
 
 let vapidConfigured = false;
 
+function envTrim(name: string): string | null {
+  const v = process.env[name];
+  if (v == null) return null;
+  const t = v.trim();
+  return t.length ? t : null;
+}
+
 export function configureWebPush(): boolean {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const publicKey = envTrim("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
+  const privateKey = envTrim("VAPID_PRIVATE_KEY");
   const subject =
-    process.env.VAPID_SUBJECT || "mailto:admin@bhaktichallenge.app";
+    envTrim("VAPID_SUBJECT") || "mailto:admin@bhaktichallenge.app";
 
   if (!publicKey || !privateKey) {
     console.warn("VAPID keys missing — push notifications disabled");
@@ -44,7 +51,7 @@ export function configureWebPush(): boolean {
 }
 
 export function getPublicVapidKey(): string | null {
-  return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null;
+  return envTrim("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
 }
 
 export async function savePushSubscription(opts: {

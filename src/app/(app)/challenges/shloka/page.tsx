@@ -216,7 +216,10 @@ export default function ShlokaChallengePage() {
       setToast(true);
       setTimeout(() => {
         setToast(false);
-        router.push(challengePath(payload.id));
+        const path = challengePath(payload.id);
+        router.push(
+          finalVisibility === "public" ? `${path}?share=1` : path
+        );
       }, 1600);
     } catch {
       /* ignore */
@@ -527,7 +530,11 @@ export default function ShlokaChallengePage() {
 
       <OfferingToast
         show={toast}
-        message="Shloka challenge created — Hare Krishna!"
+        message={
+          visibility === "public"
+            ? "Public challenge created — copy your share link!"
+            : "Shloka challenge created — Hare Krishna!"
+        }
       />
     </div>
   );

@@ -75,8 +75,21 @@ Serve over **HTTPS** (or `localhost`) for install + SW registration.
 ### Daily 9 PM push reminders
 
 ```bash
-npm run push:vapid      # generate VAPID + CRON_SECRET → add to .env.local
+npm run push:vapid      # generate VAPID keys → add to .env.local
 ```
+
+Required env (local **and** Vercel Production/Preview):
+
+| Variable | Notes |
+|----------|--------|
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Public key from `push:vapid` |
+| `VAPID_PRIVATE_KEY` | Private key (server only) |
+| `VAPID_SUBJECT` | e.g. `mailto:admin@yourdomain.com` |
+| `CRON_SECRET` | Protects `/api/push/send-daily` |
+| `PUSH_TZ` / `PUSH_HOUR` | Optional; default `Asia/Kolkata` / `21` |
+
+If enable fails with **“missing VAPID keys”**, the deployment does not have these vars. Add them in  
+**Vercel → Project → Settings → Environment Variables**, then **Redeploy**.
 
 Users enable reminders under **Notifications** or **Settings**.  
 Cron (Supabase Edge Function or Vercel Cron) hits `POST /api/push/send-daily` hourly; pushes only fire at **21:00 Asia/Kolkata**. See `supabase/README.md`.

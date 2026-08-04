@@ -10,10 +10,15 @@ import {
 
 /** GET — public VAPID key for the client */
 export async function GET() {
-  const key = getPublicVapidKey();
+  const key = getPublicVapidKey()?.trim() || null;
   if (!key) {
     return NextResponse.json(
-      { ok: false, error: "Push not configured (missing VAPID keys)." },
+      {
+        ok: false,
+        error:
+          "Push not configured (missing VAPID keys). Set NEXT_PUBLIC_VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the deployment environment, then redeploy.",
+        code: "VAPID_MISSING",
+      },
       { status: 503 }
     );
   }

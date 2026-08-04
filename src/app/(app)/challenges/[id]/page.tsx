@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ChallengeProgressView } from "@/components/challenges/ChallengeProgressView";
+import { ShareChallengeLink } from "@/components/challenges/ShareChallengeLink";
 import {
   challengePath,
   CHALLENGE_STATIC_SEGMENTS,
@@ -36,11 +37,14 @@ import {
   UserPlus,
 } from "lucide-react";
 
-export default function ChallengeDetailPage() {
+function ChallengeDetailContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const rawId = typeof params?.id === "string" ? params.id : "";
   const id = decodeURIComponent(rawId);
+  const showShareHighlight =
+    searchParams.get("share") === "1" || searchParams.get("created") === "1";
 
   const [challenge, setChallenge] = useState<SavedChallenge | null>(null);
   const [user, setUser] = useState<LocalUserProfile | null>(null);
@@ -306,6 +310,15 @@ export default function ChallengeDetailPage() {
           ) : null}
         </div>
 
+        {isPublic && (
+          <ShareChallengeLink
+            challengeId={challenge.id}
+            challengeName={challenge.name}
+            emphasize={showShareHighlight}
+            className="mt-4"
+          />
+        )}
+
         {/* Shloka: Mark as complete for active day when joined */}
         {dayAction && dayAction.phase === "active" && (
           <div className="mt-4 rounded-xl border border-gold/35 bg-cream/50 p-3 sm:p-4">
@@ -358,5 +371,19 @@ export default function ChallengeDetailPage() {
         />
       </GlassCard>
     </div>
+  );
+}
+
+export default function ChallengeDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--text-muted)]">
+          Loading challenge…
+        </div>
+      }
+    >
+      <ChallengeDetailContent />
+    </Suspense>
   );
 }

@@ -780,6 +780,32 @@ export function challengePath(id: string): string {
 }
 
 /**
+ * Absolute public URL for sharing a challenge (joinable when visibility is public).
+ * Prefers `window.location.origin` on the client; falls back to env / production host.
+ */
+export function challengeShareUrl(id: string): string {
+  const path = challengePath(id);
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return `${window.location.origin}${path}`;
+  }
+  const base = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    "https://sadhana-challenge-mu.vercel.app"
+  )
+    .replace(/\/$/, "")
+    .replace(/\/login\/?$/i, "");
+  return `${base}${path}`;
+}
+
+/** Short message + link for clipboard / WhatsApp / native share. */
+export function challengeShareText(name: string, id: string): string {
+  const title = (name || "Sadhana Challenge").trim();
+  const url = challengeShareUrl(id);
+  return `Hare Krishna! Join my public challenge “${title}” on Sadhana Challenge:\n${url}`;
+}
+
+/**
  * Public challenges the user created or joined (accepted participant).
  * Used by the Leaderboard page.
  */
