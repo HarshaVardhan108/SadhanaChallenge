@@ -88,8 +88,25 @@ export default defineSchema({
     dailyRounds: v.number(),
     readingMinutes: v.number(),
     fluteAmbient: v.boolean(),
+    /** Target study hours per day */
+    studyHoursDay: v.optional(v.number()),
+    /** Target study hours per week */
+    studyHoursWeek: v.optional(v.number()),
+    /** Target study hours per month */
+    studyHoursMonth: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  /** Daily study hours logged by the student */
+  studyHoursLogs: defineTable({
+    userId: v.id("users"),
+    /** Local calendar day YYYY-MM-DD */
+    date: v.string(),
+    hours: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_date", ["userId", "date"]),
 
   pushSubscriptions: defineTable({
     userId: v.optional(v.union(v.id("users"), v.null())),

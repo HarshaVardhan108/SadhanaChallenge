@@ -3,7 +3,7 @@
 export const GUEST_STORAGE_KEY = "bhakti-guest";
 
 /** Routes guests may open without logging in. */
-export const GUEST_ALLOWED_PATHS = ["/dashboard"] as const;
+export const GUEST_ALLOWED_PATHS = ["/dashboard", "/study"] as const;
 
 export function isGuestUser(): boolean {
   if (typeof window === "undefined") return false;

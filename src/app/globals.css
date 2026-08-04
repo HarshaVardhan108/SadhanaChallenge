@@ -102,7 +102,7 @@ h4,
 /*
  * Pandharpur-style intro:
  * - Covers login until user taps BEGIN JOURNEY
- * - data-intro-done hides splash before paint on return visits
+ * - data-intro-done / server cookie skip splash on return visits
  */
 .bhakti-intro-splash,
 #bhakti-intro-splash {

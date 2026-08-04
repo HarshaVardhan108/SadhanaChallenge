@@ -1,5 +1,5 @@
-/* Sadhana Challenge service worker — offline shell + static caching */
-const CACHE_VERSION = "bhakti-v2-lotus";
+/* Sadhana Challenge service worker — offline shell + safe static caching */
+const CACHE_VERSION = "bhakti-v3-study";
 const PRECACHE = [
   "/",
   "/login",
@@ -38,7 +38,9 @@ self.addEventListener("activate", (event) => {
 /**
  * Strategy:
  * - Navigations: network-first, fall back to cache (offline shell)
- * - Static assets (same-origin): cache-first
+ * - Next.js / Turbopack chunks (/_next/*): network-first only
+ *   (never cache-first — stale module factories break after HMR/deploys)
+ * - Icons & media: cache-first
  * - API / auth: network-only (never cache credentials)
  */
 self.addEventListener("fetch", (event) => {
@@ -50,11 +52,37 @@ self.addEventListener("fetch", (event) => {
   // Only handle same-origin
   if (url.origin !== self.location.origin) return;
 
-  // Never cache API or auth
+  // Never intercept API, HMR, or Next runtime chunks with cache-first
   if (
     url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_next/webpack-hmr")
+    url.pathname.startsWith("/_next/webpack-hmr") ||
+    url.pathname.startsWith("/_next/")
   ) {
+    // Network-first for app JS/CSS so module graph stays consistent
+    if (url.pathname.startsWith("/_next/")) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            // Only cache successful hashed static assets (production)
+            if (
+              response.ok &&
+              url.pathname.startsWith("/_next/static/") &&
+              request.destination !== ""
+            ) {
+              const copy = response.clone();
+              caches.open(CACHE_VERSION).then((cache) => {
+                cache.put(request, copy).catch(() => undefined);
+              });
+            }
+            return response;
+          })
+          .catch(async () => {
+            const cached = await caches.match(request);
+            if (cached) return cached;
+            return new Response("Offline", { status: 503 });
+          })
+      );
+    }
     return;
   }
 
@@ -76,23 +104,23 @@ self.addEventListener("fetch", (event) => {
             (await caches.match("/"));
           return (
             fallback ||
-            new Response("You are offline. Reconnect to continue your sadhana.", {
-              status: 503,
-              headers: { "Content-Type": "text/plain; charset=utf-8" },
-            })
+            new Response(
+              "You are offline. Reconnect to continue your sadhana.",
+              {
+                status: 503,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+              }
+            )
           );
         })
     );
     return;
   }
 
-  // Static assets — cache first
+  // Icons & media only — cache first (not app JS)
   if (
-    url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
-    url.pathname.match(
-      /\.(js|css|png|jpg|jpeg|gif|webp|svg|woff2?|mp3|mp4|ico)$/i
-    )
+    url.pathname.match(/\.(png|jpg|jpeg|gif|webp|svg|woff2?|mp3|mp4|ico)$/i)
   ) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -100,7 +128,9 @@ self.addEventListener("fetch", (event) => {
         return fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+            caches.open(CACHE_VERSION).then((cache) =>
+              cache.put(request, copy).catch(() => undefined)
+            );
           }
           return response;
         });
@@ -112,6 +142,11 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (event.data && event.data.type === "CLEAR_CACHES") {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+    );
   }
 });
 
@@ -132,8 +167,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Sadhana Challenge", {
       body:
-        data.body ||
-        "Hare Krishna PR, please complete your challenge",
+        data.body || "Hare Krishna PR, please complete your challenge",
       icon,
       badge: icon,
       image: data.image || undefined,
@@ -144,7 +178,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || "/dashboard";
+  const target =
+    (event.notification.data && event.notification.data.url) || "/dashboard";
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

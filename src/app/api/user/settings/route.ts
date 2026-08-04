@@ -29,6 +29,9 @@ export async function PUT(req: Request) {
       dailyRounds?: number;
       readingMinutes?: number;
       fluteAmbient?: boolean;
+      studyHoursDay?: number;
+      studyHoursWeek?: number;
+      studyHoursMonth?: number;
     };
     const settings = await dbSaveSettings(session.id, body);
     return NextResponse.json({ ok: true, settings });

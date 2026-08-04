@@ -15,6 +15,15 @@ export type DbUserSettings = {
   dailyRounds: number;
   readingMinutes: number;
   fluteAmbient: boolean;
+  studyHoursDay: number;
+  studyHoursWeek: number;
+  studyHoursMonth: number;
+};
+
+export type DbStudyHoursLog = {
+  date: string;
+  hours: number;
+  updatedAt: string | null;
 };
 
 function asUserId(userId: string): Id<"users"> {
@@ -89,5 +98,43 @@ export async function dbSaveSettings(
     dailyRounds: data.dailyRounds,
     readingMinutes: data.readingMinutes,
     fluteAmbient: data.fluteAmbient,
+    studyHoursDay: data.studyHoursDay,
+    studyHoursWeek: data.studyHoursWeek,
+    studyHoursMonth: data.studyHoursMonth,
+  });
+}
+
+export async function dbGetStudyHoursLogs(
+  userId: string,
+  range?: { fromDate?: string; toDate?: string }
+): Promise<DbStudyHoursLog[]> {
+  const convex = getConvexClient();
+  return await convex.query(api.userData.getStudyHoursLogs, {
+    userId: asUserId(userId),
+    fromDate: range?.fromDate,
+    toDate: range?.toDate,
+  });
+}
+
+export async function dbGetStudyHoursForDate(
+  userId: string,
+  date: string
+): Promise<DbStudyHoursLog> {
+  const convex = getConvexClient();
+  return await convex.query(api.userData.getStudyHoursForDate, {
+    userId: asUserId(userId),
+    date,
+  });
+}
+
+export async function dbSaveStudyHoursLog(
+  userId: string,
+  data: { date: string; hours: number }
+): Promise<DbStudyHoursLog> {
+  const convex = getConvexClient();
+  return await convex.mutation(api.userData.saveStudyHoursLog, {
+    userId: asUserId(userId),
+    date: data.date,
+    hours: data.hours,
   });
 }

@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import slideRed from "@/assets/IMG-20260724-WA0070.jpg";
 import slideSilver from "@/assets/IMG-20260724-WA0058.jpg";
 import desktopBg from "@/components/assets/intro-vrindavan-bg.jpg";
+import { INTRO_SESSION_KEY } from "@/lib/intro";
 
-export const INTRO_SESSION_KEY = "bhakti-intro-played";
+export { INTRO_SESSION_KEY };
 
 /** Crossfade interval between the two mobile deity images (ms). */
 const SLIDE_MS = 4500;
@@ -34,12 +35,22 @@ const DESKTOP_HERO = {
   alt: "Vrindavan — divine connection",
 };
 
+/** Session cookie so the server can skip intro without a blocking <script>. */
+function setIntroCookie() {
+  try {
+    document.cookie = `${INTRO_SESSION_KEY}=1; path=/; SameSite=Lax`;
+  } catch {
+    /* ignore */
+  }
+}
+
 function markIntroFinished() {
   try {
     sessionStorage.setItem(INTRO_SESSION_KEY, "1");
   } catch {
     /* private mode */
   }
+  setIntroCookie();
   if (typeof document !== "undefined") {
     document.documentElement.setAttribute("data-intro-done", "1");
   }

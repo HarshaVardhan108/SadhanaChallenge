@@ -1,27 +1,26 @@
+import { cookies } from "next/headers";
 import { IntroSplash } from "@/components/ambient/IntroSplash";
+import { INTRO_SESSION_KEY } from "@/lib/intro";
 
 /**
  * Shared shell for /login and /register.
  * Shows a Divine Connection intro once per browser session.
  * User must tap BEGIN JOURNEY — no auto-skip to login.
  *
- * A blocking inline script runs before paint so:
- * - First visit: intro covers login immediately
- * - Return visit: data-intro-done hides the splash before first paint
+ * Return visits: session cookie (set when intro finishes) lets the
+ * server skip the splash — no client <script> needed (React 19 safe).
  */
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const jar = await cookies();
+  const introDone = jar.get(INTRO_SESSION_KEY)?.value === "1";
+
   return (
     <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `(function(){try{if(sessionStorage.getItem("bhakti-intro-played")==="1"){document.documentElement.setAttribute("data-intro-done","1")}}catch(e){}})();`,
-        }}
-      />
-      <IntroSplash />
+      {!introDone && <IntroSplash />}
       {children}
     </>
   );

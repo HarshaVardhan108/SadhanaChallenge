@@ -1,7 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
-
 export function PageHeader({
   title,
   subtitle,
@@ -14,10 +10,7 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <motion.div
-      initial={false}
-      className="mb-5 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
-    >
+    <div className="mb-5 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
       <div className="min-w-0">
         <h1 className="font-serif text-2xl font-bold leading-tight text-krishna sm:text-3xl md:text-4xl">
           {emoji && <span className="mr-1.5 sm:mr-2">{emoji}</span>}
@@ -30,6 +23,6 @@ export function PageHeader({
         )}
       </div>
       {action && <div className="w-full shrink-0 sm:w-auto">{action}</div>}
-    </motion.div>
+    </div>
   );
 }

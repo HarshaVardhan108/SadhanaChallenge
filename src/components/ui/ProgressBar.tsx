@@ -1,8 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
+/**
+ * CSS-based progress bar (no framer-motion enter animation).
+ * Avoids SSR/client hydration mismatches from animated width.
+ */
 export function ProgressBar({
   value,
   className,
@@ -19,17 +22,27 @@ export function ProgressBar({
   const clamped = Math.min(100, Math.max(0, value));
   return (
     <div className={cn("w-full", className)}>
-      <div className={cn("w-full overflow-hidden rounded-full bg-cream border border-gold/20", height)}>
-        <motion.div
-          className={cn("h-full rounded-full progress-shimmer", !color && "bg-krishna")}
-          style={color ? { background: color } : undefined}
-          initial={{ width: 0 }}
-          animate={{ width: `${clamped}%` }}
-          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+      <div
+        className={cn(
+          "w-full overflow-hidden rounded-full border border-gold/20 bg-cream",
+          height
+        )}
+      >
+        <div
+          className={cn(
+            "h-full rounded-full progress-shimmer transition-[width] duration-700 ease-out",
+            !color && "bg-krishna"
+          )}
+          style={{
+            width: `${clamped}%`,
+            ...(color ? { background: color } : null),
+          }}
         />
       </div>
       {showLabel && (
-        <p className="mt-1 text-right text-xs text-[var(--text-muted)]">{clamped}%</p>
+        <p className="mt-1 text-right text-xs text-[var(--text-muted)]">
+          {clamped}%
+        </p>
       )}
     </div>
   );

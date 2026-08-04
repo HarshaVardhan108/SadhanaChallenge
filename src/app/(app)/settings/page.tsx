@@ -11,6 +11,11 @@ import { Input, Select } from "@/components/ui/Input";
 import { isGuestUser } from "@/lib/guest";
 import { logoutClient } from "@/lib/logout";
 import { PushReminder } from "@/components/pwa/PushReminder";
+import {
+  DEFAULT_STUDY_TARGETS,
+  loadStudyTargets,
+  saveStudyTargets,
+} from "@/lib/study-hours";
 
 // Notifications section temporarily disabled
 // const reminders = [ ... ];
@@ -76,6 +81,13 @@ export default function SettingsPage() {
   const [form, setForm] = useState<ProfileForm>(emptyForm);
   const [rounds, setRounds] = useState("16");
   const [reading, setReading] = useState("20");
+  const [studyDay, setStudyDay] = useState(String(DEFAULT_STUDY_TARGETS.day));
+  const [studyWeek, setStudyWeek] = useState(
+    String(DEFAULT_STUDY_TARGETS.week)
+  );
+  const [studyMonth, setStudyMonth] = useState(
+    String(DEFAULT_STUDY_TARGETS.month)
+  );
   const [flute, setFlute] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -101,6 +113,10 @@ export default function SettingsPage() {
     const goals = loadGoals();
     setRounds(goals.rounds);
     setReading(goals.reading);
+    const study = loadStudyTargets();
+    setStudyDay(String(study.day));
+    setStudyWeek(String(study.week));
+    setStudyMonth(String(study.month));
     try {
       setFlute(localStorage.getItem(FLUTE_KEY) === "1");
     } catch {
@@ -173,6 +189,9 @@ export default function SettingsPage() {
               dailyRounds?: number;
               readingMinutes?: number;
               fluteAmbient?: boolean;
+              studyHoursDay?: number;
+              studyHoursWeek?: number;
+              studyHoursMonth?: number;
             };
           } | null,
         ]) => {
@@ -194,6 +213,11 @@ export default function SettingsPage() {
               if (s.dailyRounds) setRounds(String(s.dailyRounds));
               if (s.readingMinutes) setReading(String(s.readingMinutes));
               if (typeof s.fluteAmbient === "boolean") setFlute(s.fluteAmbient);
+              if (s.studyHoursDay != null) setStudyDay(String(s.studyHoursDay));
+              if (s.studyHoursWeek != null)
+                setStudyWeek(String(s.studyHoursWeek));
+              if (s.studyHoursMonth != null)
+                setStudyMonth(String(s.studyHoursMonth));
               try {
                 localStorage.setItem(
                   SPIRITUAL_KEY,
@@ -207,6 +231,11 @@ export default function SettingsPage() {
                   })
                 );
                 localStorage.setItem(FLUTE_KEY, s.fluteAmbient ? "1" : "0");
+                saveStudyTargets({
+                  day: s.studyHoursDay ?? DEFAULT_STUDY_TARGETS.day,
+                  week: s.studyHoursWeek ?? DEFAULT_STUDY_TARGETS.week,
+                  month: s.studyHoursMonth ?? DEFAULT_STUDY_TARGETS.month,
+                });
               } catch {
                 /* ignore */
               }
@@ -244,6 +273,11 @@ export default function SettingsPage() {
         JSON.stringify({ rounds, reading })
       );
       localStorage.setItem(FLUTE_KEY, flute ? "1" : "0");
+      saveStudyTargets({
+        day: Number(studyDay) || DEFAULT_STUDY_TARGETS.day,
+        week: Number(studyWeek) || DEFAULT_STUDY_TARGETS.week,
+        month: Number(studyMonth) || DEFAULT_STUDY_TARGETS.month,
+      });
     } catch {
       /* ignore */
     }
@@ -306,6 +340,9 @@ export default function SettingsPage() {
           dailyRounds: Number(rounds) || 16,
           readingMinutes: Number(reading) || 20,
           fluteAmbient: flute,
+          studyHoursDay: Number(studyDay) || DEFAULT_STUDY_TARGETS.day,
+          studyHoursWeek: Number(studyWeek) || DEFAULT_STUDY_TARGETS.week,
+          studyHoursMonth: Number(studyMonth) || DEFAULT_STUDY_TARGETS.month,
         }),
       }).catch(() => null);
 
@@ -490,6 +527,65 @@ export default function SettingsPage() {
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">
             Goals are saved with your profile when you press Save Changes.
+          </p>
+        </GlassCard>
+
+        <GlassCard>
+          <h2 className="font-serif text-lg font-bold text-krishna">
+            Study targets
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            Set how many hours you aim to study. Log actual hours each day on the{" "}
+            <Link href="/study" className="font-semibold text-krishna underline">
+              Study
+            </Link>{" "}
+            page.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Input
+              label="Per day (hrs)"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={24}
+              step={0.5}
+              value={studyDay}
+              onChange={(e) => {
+                setStudyDay(e.target.value);
+                setMessage(null);
+              }}
+            />
+            <Input
+              label="Per week (hrs)"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={168}
+              step={1}
+              value={studyWeek}
+              onChange={(e) => {
+                setStudyWeek(e.target.value);
+                setMessage(null);
+              }}
+            />
+            <Input
+              label="Per month (hrs)"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={744}
+              step={1}
+              value={studyMonth}
+              onChange={(e) => {
+                setStudyMonth(e.target.value);
+                setMessage(null);
+              }}
+            />
+          </div>
+          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+            Defaults: {DEFAULT_STUDY_TARGETS.day}h/day ·{" "}
+            {DEFAULT_STUDY_TARGETS.week}h/week ·{" "}
+            {DEFAULT_STUDY_TARGETS.month}h/month. Saved with Save Changes.
           </p>
         </GlassCard>
 

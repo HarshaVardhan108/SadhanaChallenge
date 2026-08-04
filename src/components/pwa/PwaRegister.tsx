@@ -39,17 +39,38 @@ export function PwaRegister() {
       !(window as unknown as { MSStream?: unknown }).MSStream;
     setIsIos(ios);
 
-    // Register service worker
+    // Register service worker only in production.
+    // In dev, a SW cache-first strategy breaks Turbopack HMR module graphs
+    // (stale lucide/chunk factories → runtime errors).
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/", updateViaCache: "none" })
-        .then((reg) => {
-          // Check for updates periodically
-          reg.update().catch(() => undefined);
-        })
-        .catch(() => {
-          /* private mode / unsupported */
-        });
+      if (process.env.NODE_ENV === "development") {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((regs) =>
+            Promise.all(
+              regs.map((reg) =>
+                reg.unregister().catch(() => false)
+              )
+            )
+          )
+          .then(() =>
+            "caches" in window
+              ? caches.keys().then((keys) =>
+                  Promise.all(keys.map((k) => caches.delete(k)))
+                )
+              : undefined
+          )
+          .catch(() => undefined);
+      } else {
+        navigator.serviceWorker
+          .register("/sw.js", { scope: "/", updateViaCache: "none" })
+          .then((reg) => {
+            reg.update().catch(() => undefined);
+          })
+          .catch(() => {
+            /* private mode / unsupported */
+          });
+      }
     }
 
     if (isStandalone) return;

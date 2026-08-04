@@ -63,6 +63,13 @@ const ringActivities = [
     enabled: false,
   },
   {
+    name: "Study",
+    detail: "Log hours",
+    icon: "📚",
+    href: "/study",
+    enabled: true,
+  },
+  {
     name: "Reading",
     detail: "Bhagavad Gita",
     icon: "📖",

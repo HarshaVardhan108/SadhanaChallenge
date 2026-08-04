@@ -2,8 +2,8 @@ export const navItems = [
   { href: "/dashboard", label: "Home", icon: "Home" },
   { href: "/challenges", label: "Challenges", icon: "Sparkles" },
   { href: "/shlokas", label: "Shlokas", icon: "BookOpen" },
+  { href: "/study", label: "Study", icon: "GraduationCap" },
   { href: "/leaderboard", label: "Leaderboard", icon: "Trophy" },
-  { href: "/community", label: "Community", icon: "Users" },
   { href: "/achievements", label: "Achievements", icon: "Award" },
   { href: "/invite", label: "Invite", icon: "UserPlus" },
   { href: "/profile", label: "Profile", icon: "User" },
@@ -231,7 +231,7 @@ export const activityHubs = [
   { name: "Chanting", icon: "🕉️", href: "/challenges", color: "bg-white text-krishna" },
   { name: "Reading", icon: "📖", href: "/reading", color: "bg-white text-krishna" },
   { name: "Shlokas", icon: "📜", href: "/shlokas", color: "bg-white text-krishna" },
-  { name: "Service", icon: "🙏", href: "/community", color: "bg-white text-krishna" },
+  { name: "Study", icon: "📚", href: "/study", color: "bg-white text-krishna" },
   { name: "Meditation", icon: "🧘", href: "/challenges", color: "bg-white text-krishna" },
   { name: "Prayers", icon: "🪔", href: "/challenges", color: "bg-white text-krishna" },
 ];

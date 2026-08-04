@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
   Sparkles,
   BookOpen,
   Trophy,
-  Users,
   Award,
   UserPlus,
   User,
@@ -18,18 +16,20 @@ import {
   BarChart3,
   LogIn,
   LogOut,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isGuestUser } from "@/lib/guest";
 import { logoutClient } from "@/lib/logout";
 
+/** Fixed desktop nav — same list on server and client (no guest filtering). */
 const mainNav = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/challenges", label: "Challenges", icon: Sparkles },
   { href: "/shlokas", label: "Shlokas", icon: BookOpen },
+  { href: "/study", label: "Study", icon: GraduationCap },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-  { href: "/community", label: "Community", icon: Users },
-];
+] as const;
 
 const moreNav = [
   { href: "/achievements", label: "Achievements", icon: Award },
@@ -37,25 +37,21 @@ const moreNav = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/settings", label: "Settings", icon: Settings },
-];
-
-const guestMainNav = [
-  { href: "/dashboard", label: "Home", icon: Home },
-];
+] as const;
 
 /** Compact top bar on mobile; full nav on desktop (tabs handle mobile primary). */
 export function Navbar() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/dashboard";
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     setIsGuest(isGuestUser());
   }, [pathname]);
-
-  const navItems = isGuest ? guestMainNav : mainNav;
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -89,15 +85,21 @@ export function Navbar() {
               <span className="text-krishna">Sadhana</span>{" "}
               <span className="text-gold">Challenge</span>
             </p>
-            <p className="hidden text-[10px] tracking-wide text-peacock sm:block">
-              {isGuest ? "Guest mode" : "Goloka · Vrindavan"}
+            <p
+              className="hidden text-[10px] tracking-wide text-peacock sm:block"
+              suppressHydrationWarning
+            >
+              {mounted && isGuest ? "Guest mode" : "Goloka · Vrindavan"}
             </p>
           </div>
         </Link>
 
-        {/* Desktop nav only */}
-        <nav className="hidden items-center gap-1 lg:flex">
-          {navItems.map((item) => {
+        {/* Desktop nav — static item list (never guest-filtered) so SSR matches client */}
+        <nav
+          className="hidden items-center gap-1 lg:flex"
+          aria-label="Main"
+        >
+          {mainNav.map((item) => {
             const active = pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
@@ -111,79 +113,72 @@ export function Navbar() {
                     : "text-[var(--text-muted)] hover:bg-cream hover:text-krishna"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden />
                 {item.label}
-                {active && (
-                  <motion.span
-                    layoutId="nav-pill"
+                {active ? (
+                  <span
                     className="absolute inset-0 -z-10 rounded-xl border border-gold/40 bg-gold/25"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    aria-hidden
                   />
-                )}
+                ) : null}
               </Link>
             );
           })}
 
-          {!isGuest && (
+          {/* More menu only for logged-in users; hide until mounted to avoid guest flash */}
+          {mounted && !isGuest ? (
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setMoreOpen(!moreOpen)}
+                onClick={() => setMoreOpen((o) => !o)}
                 className="rounded-xl px-3 py-2 text-sm font-medium text-[var(--text-muted)] hover:bg-cream hover:text-krishna"
               >
                 More ▾
               </button>
-              <AnimatePresence>
-                {moreOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 8 }}
-                    className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-gold/40 bg-white p-2 shadow-xl"
+              {moreOpen ? (
+                <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-2xl border border-gold/40 bg-white p-2 shadow-xl">
+                  {moreNav.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition hover:bg-gold/20",
+                          pathname.startsWith(item.href)
+                            ? "font-medium text-krishna"
+                            : "text-[var(--text-muted)]"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" aria-hidden />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                  <div className="my-1 border-t border-gold/30" />
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
                   >
-                    {moreNav.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={() => setMoreOpen(false)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition hover:bg-gold/20",
-                            pathname.startsWith(item.href)
-                              ? "font-medium text-krishna"
-                              : "text-[var(--text-muted)]"
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {item.label}
-                        </Link>
-                      );
-                    })}
-                    <div className="my-1 border-t border-gold/30" />
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-rose-600 transition hover:bg-rose-50 disabled:opacity-60"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      {loggingOut ? "Signing out…" : "Logout"}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <LogOut className="h-4 w-4" aria-hidden />
+                    {loggingOut ? "Signing out…" : "Logout"}
+                  </button>
+                </div>
+              ) : null}
             </div>
-          )}
+          ) : null}
         </nav>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {isGuest ? (
+        <div className="flex items-center gap-1.5 sm:gap-2" suppressHydrationWarning>
+          {mounted && isGuest ? (
             <Link
               href="/login"
               className="inline-flex h-10 items-center gap-1.5 rounded-full bg-krishna px-3 text-xs font-semibold text-white shadow sm:px-4 sm:text-sm"
             >
-              <LogIn className="h-4 w-4" />
+              <LogIn className="h-4 w-4" aria-hidden />
               Login
             </Link>
           ) : (
@@ -193,7 +188,7 @@ export function Navbar() {
                 className="relative flex h-11 w-11 items-center justify-center rounded-full bg-cream text-krishna transition active:bg-gold/30"
                 aria-label="Notifications"
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5" aria-hidden />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-saffron" />
               </Link>
               <Link
